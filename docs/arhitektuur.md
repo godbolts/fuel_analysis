@@ -18,6 +18,7 @@ Kui kiiresti ja võrdselt kanduvad bensiini/diisli hinnamuutused üle Baltikumi 
 | (https://energy.ec.europa.eu/data-and-analysis/weekly-oil-bulletin_en) / EU Weekly Oil Bulletin | (https://energy.ec.europa.eu/document/download/906e60ca-8b6a-44e7-8589-652854d2fd3f_en?filename=Weekly_Oil_Bulletin_Prices_History_maticni_4web.xlsx) | Jah, kod nädalas, nejapäeviti | Euroopa kütuse hindade allikas |
 | [Nimi] | https://www.oilpriceapi.com/ | Ei, staatiline | [Milleks kasutatakse?] |
 
+https://www.eia.gov/dnav/pet/pet_pri_spt_s1_w.htm
 EUR/USD vahetus: https://query1.finance.yahoo.com/v8/finance/chart/EURUSD%3DX?interval=1wk&range=5y
 
 ## Andmevoog
