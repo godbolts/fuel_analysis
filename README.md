@@ -1,10 +1,8 @@
-# [GRUPI NIMI] — [PROJEKTI PEALKIRI]
-
-> **Juhend:** Asenda kõik nurksulgudes vormid oma sisuga enne esitamist. Kustuta see juhendrida.
+# Kütuseanalüüs — Maailmaturu ja Eesti kütusehindade võrdlev analüüs
 
 ## Äriküsimus
 
-[Kirjelda ühe-kahe lausega, millise andmetega seotud probleemi te lahendate ja kes sellest kasu saab.]
+Kuidas käituvad Eesti kütusehinnad maailmaturu hindade muutuste kontekstis?
 
 **Mõõdikud:**
 
