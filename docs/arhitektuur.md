@@ -1,25 +1,28 @@
 # Arhitektuur
 
-> **Juhend:** See fail on projektitöö esimese nädala väljund. Asenda kõik nurksulgudes plankid oma projekti tegeliku sisuga. Kustuta see juhendrida.
-
 ## Äriküsimus
 
-[Kirjuta ühe-kahe lausega oma äriküsimus täpselt. Näiteks: "Millistes kauplustes ja mis kellaaegadel on müügitõhusus (käive külastaja kohta) kõrgeim?"]
+Kui kiiresti ja võrdselt kanduvad bensiini/diisli hinnamuutused üle Baltikumi tankla hindadesse ning milline riik pakub igal nädalal odavaima kütuse?
 
 ## Mõõdikud
 
-1. [Esimene mõõdik — kirjelda, mida arvutate ja kuidas]
-2. [Teine mõõdik]
-3. [Kolmas mõõdik — vabatahtlik]
+1. Maailma bensiini ja Eesti, Läti, Leedu hinnavõrdlus nädala lõikes
+2. Maailma diisli ja Eesti, Läti, Leedu hinnavõrdlus nädala lõikes
 
 ## Andmeallikad
 
+// Üllar ja Teet haldavad potensiaalsed allikaid
+
 | Allikas | Tüüp | Ajas muutuv? | Roll |
 |---------|------|--------------|------|
-| [Nimi] | [API / CSV / DB] | Jah, [iga X tundi / päeva] | [Milleks kasutatakse?] |
-| [Nimi] | [seed / dim-tabel] | Ei, staatiline | [Milleks kasutatakse?] |
+| (https://energy.ec.europa.eu/data-and-analysis/weekly-oil-bulletin_en) / EU Weekly Oil Bulletin | (https://energy.ec.europa.eu/document/download/906e60ca-8b6a-44e7-8589-652854d2fd3f_en?filename=Weekly_Oil_Bulletin_Prices_History_maticni_4web.xlsx) | Jah, kod nädalas, nejapäeviti | Euroopa kütuse hindade allikas |
+| [Nimi] | https://www.oilpriceapi.com/ | Ei, staatiline | [Milleks kasutatakse?] |
+
+EUR/USD vahetus: https://query1.finance.yahoo.com/v8/finance/chart/EURUSD%3DX?interval=1wk&range=5y
 
 ## Andmevoog
+
+/Esmase Mustandi võib Marko teha
 
 ```mermaid
 flowchart LR
@@ -45,12 +48,13 @@ flowchart LR
 
 | Roll | Vastutus | Täitja |
 |------|----------|--------|
-| Andmeallika omanik | Kirjutab sissevõtu loogika, hoiab API-t töös | [Nimi] |
-| Transformatsioonide omanik | Kirjutab mart kihi mudelid ja mõõdikute arvutuse | [Nimi] |
-| Kvaliteedi omanik | Kirjutab testid ja vaatab läbi ebaõnnestunud kontrollid | [Nimi] |
-| Näidikulaua omanik | Ehitab näidikulaua ja seob selle äriküsimusega | [Nimi] |
+| Andmeallika omanik | Kirjutab sissevõtu loogika, hoiab API-t töös | Üllar |
+| Transformatsioonide omanik | Kirjutab mart kihi mudelid ja mõõdikute arvutuse | Marko |
+| Kvaliteedi omanik | Kirjutab testid ja vaatab läbi ebaõnnestunud kontrollid | Jürgen |
+| Näidikulaua omanik | Ehitab näidikulaua ja seob selle äriküsimusega | Teet |
 
 ## Riskid
+/Ilmar-Jürgen võtab riskid enda peale.
 
 | Risk | Mõju | Maandus |
 |------|------|---------|
