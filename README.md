@@ -120,7 +120,7 @@ Testide tulemused: [kuhu salvestatakse / kuidas vaadata]
 
 | Nimi | Roll |
 |------|------|
-| [Nimi 1] | [Roll] |
-| [Nimi 2] | [Roll] |
-| [Nimi 3] | [Roll] |
-| [Nimi 4] | [Roll — vabatahtlik] |
+| Teet Kalmus | [Roll] |
+| Marko Karilaid | [Roll] |
+| Ilmar-Jürgen Rammi | [Roll] |
+| Üllar Unt | [Roll] |
