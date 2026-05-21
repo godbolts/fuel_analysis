@@ -21,6 +21,10 @@ Kui kiiresti ja võrdselt kanduvad bensiini/diisli hinnamuutused üle Baltikumi 
 https://www.eia.gov/dnav/pet/pet_pri_spt_s1_w.htm
 EUR/USD vahetus: https://query1.finance.yahoo.com/v8/finance/chart/EURUSD%3DX?interval=1wk&range=5y
 
+EIA — Maailmaturu rafineeritud kütuste spothinnad (US Gulf Coast)
+   Leht: https://www.eia.gov/dnav/pet/pet_pri_spt_s1_w.htm
+   Fail: https://www.eia.gov/dnav/pet/xls/PET_PRI_SPT_S1_W.xls
+
 ## Andmevoog
 
 /Esmase Mustandi võib Marko teha
