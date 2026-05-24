@@ -2,33 +2,85 @@
 
 ## Äriküsimus
 
-Kuidas käituvad Eesti kütusehinnad maailmaturu hindade muutuste kontekstis?
+Kui kiiresti ja võrdselt kanduvad bensiini/diisli hinnamuutused üle Baltikumi tankla hindadesse ning milline riik pakub igal nädalal odavaima kütuse?
 
 **Mõõdikud:**
 
-1. [Esimene KPI või mõõdik — näiteks: päevane müük poe kohta]
-2. [Teine KPI või mõõdik]
-3. [Kolmas KPI või mõõdik — vabatahtlik]
+1. Maailma bensiini ja Eesti, Läti, Leedu hinnavõrdlus nädala lõikes
+2. Maailma diisli ja Eesti, Läti, Leedu hinnavõrdlus nädala lõikes
 
 ## Arhitektuur
 
 ```mermaid
 flowchart LR
-    source[Andmeallikas] --> ingest[Sissevõtt]
-    ingest --> staging[(staging)]
-    staging --> transform[Transformatsioon]
-    transform --> mart[(mart)]
-    mart --> dashboard[Näidikulaud]
+
+    subgraph Sources["Andmeallikad"]
+
+        subgraph Weekly["Nädalased allikad"]
+            eu[European Weekly Oil Bulletin<br/>XLSX<br/>Neljapäev]
+            yahoo[Yahoo Finance EUR/USD<br/>JSON<br/>Reede]
+        end
+
+        subgraph Frequent["Sagedased allikad"]
+            oil[OilPrice API<br/>JSON<br/>5 min]
+            teadmiseks[Teadmiseks.ee<br/>JSON<br/>Päev]
+        end
+
+        subgraph Statistical["Statistilised allikad"]
+            eia[US EIA Statistics<br/>XLS/XLSX/API<br/>Päev/Nädal/Kuu]
+        end
+    end
+
+    subgraph Ingestion["Sissevõtt"]
+        api[API Connector]
+        file[File Loader]
+        scheduler[Scheduler]
+    end
+
+    subgraph Storage["Andmeladu"]
+        staging[(staging)]
+        transform[Transformatsioon]
+        mart[(mart)]
+    end
+
+    subgraph Consumption["Tarbimine"]
+        dashboard[Näidikulaud]
+        quality[Andmekvaliteedi testid]
+    end
+
+    eu --> file
+    eia --> file
+
+    oil --> api
+    yahoo --> api
+    teadmiseks --> api
+    eia --> api
+
+    scheduler --> api
+    scheduler --> file
+
+    api --> staging
+    file --> staging
+
+    staging --> transform
+    transform --> mart
+
+    mart --> dashboard
+    mart --> quality
+
 ```
 
 Täpsem kirjeldus: [`docs/arhitektuur.md`](docs/arhitektuur.md)
 
 ## Andmestik
 
-| Allikas | Tüüp | Ajas muutuv? | Roll |
-|---------|------|--------------|------|
-| [Andmeallika nimi] | [API / fail / andmebaas] | Jah, [iga tund / päevas / muu] | Põhiandmevoog |
-| [Teise allika nimi] | [seed / dim-tabel] | Ei, staatiline | Kõrvaltabel |
+| Allikas | Tüüp | Ajas muutuv? | Roll | Link |
+|---------|------|--------------|------|------|
+| European Weekly Oil Bulletin | xlsx | Kord nädalas (neljapäevit) | Baltikumide hinnad | https://energy.ec.europa.eu/document/download/906e60ca-8b6a-44e7-8589-652854d2fd3f_en?filename=Weekly_Oil_Bulletin_Prices_History_maticni_4web.xlsx |
+| Oil Price | JSON | 5 minutit | Maailma hinnad | https://www.oilpriceapi.com |
+| US Statistics | XLS | Päevas/nädalas/kuus | Maailma/USA hinnad | https://www.eia.gov/opendata/, https://www.eia.gov/dnav/pet/pet_pri_spt_s1_w.htm, https://www.eia.gov/dnav/pet/xls/PET_PRI_SPT_S1_W.xls |
+| Yahoo Finance | JSON | Kord nädalas (reede) | Euro ja dollari kurss | https://query1.finance.yahoo.com/v8/finance/chart/EURUSD%3DX?interval=1wk&range=5y |
+| Teadmiseks | JSON | Päevas | Tallinna kütusehinnad | https://teadmiseks.ee/wp-content/themes/Total/fuel-chart-30d.php |
 
 ## Stack
 
@@ -120,7 +172,7 @@ Testide tulemused: [kuhu salvestatakse / kuidas vaadata]
 
 | Nimi | Roll |
 |------|------|
-| Teet Kalmus | [Roll] |
-| Marko Karilaid | [Roll] |
-| Ilmar-Jürgen Rammi | [Roll] |
-| Üllar Unt | [Roll] |
+| Teet Kalmus | Näidikulaua omanik |
+| Marko Karilaid | Transformatsioonide omanik |
+| Ilmar-Jürgen Rammi | Kvaliteedi omanik |
+| Üllar Unt | Andmeallika omanik |
