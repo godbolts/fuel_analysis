@@ -59,13 +59,12 @@ flowchart LR
 | Näidikulaua omanik | Ehitab näidikulaua ja seob selle äriküsimusega | Teet |
 
 ## Riskid
-/Ilmar-Jürgen võtab riskid enda peale.
 
 | Risk | Mõju | Maandus |
 |------|------|---------|
-| [Risk 1 — näiteks: API ei vasta] | [Mis juhtub?] | [Kuidas maandad?] |
-| [Risk 2] | [Mis juhtub?] | [Kuidas maandad?] |
-| [Risk 3] | [Mis juhtub?] | [Kuidas maandad?] |
+| API ei vasta | Andmed ei uuene | Programmeerime töövoo teatud aja tagant uuesti proovima. Logime API ühenduse katsed. Kui on pikem katkestus, siis saadame teate. |
+| Andmeallika failis on muudatus andmestruktuuris | Võib lõhkuda töövoo, kui sobivat välja päring ei leia. | Testime andmeallika väljade kattuvust. Logime tulemused. Saadame teate, kui töövoog katkeb. |
+| Andmeallika failis on andmed puudu | Andmed ei uuene või näitavad valesid tulemusi. | Testime andmete kvaliteeti. Logime tulemused. Saadame teate vigade korral. |
 
 ## Privaatsus ja turve
 
