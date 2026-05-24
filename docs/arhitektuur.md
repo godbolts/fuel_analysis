@@ -13,10 +13,10 @@ Kui kiiresti ja võrdselt kanduvad bensiini/diisli hinnamuutused üle Baltikumi 
 
 | Allikas | Tüüp | Ajas muutuv? | Roll | Link |
 |---------|------|--------------|------|------|
-| European Weekly Oil Bulletin | xlsx | Kord nädalas (Neljapäevit) | Baltikumide hinnad | https://energy.ec.europa.eu/document/download/906e60ca-8b6a-44e7-8589-652854d2fd3f_en?filename=Weekly_Oil_Bulletin_Prices_History_maticni_4web.xlsx |
+| European Weekly Oil Bulletin | xlsx | Kord nädalas (neljapäevit) | Baltikumide hinnad | https://energy.ec.europa.eu/document/download/906e60ca-8b6a-44e7-8589-652854d2fd3f_en?filename=Weekly_Oil_Bulletin_Prices_History_maticni_4web.xlsx |
 | Oil Price | JSON | 5 minutit | Maailma hinnad | https://www.oilpriceapi.com |
-| US Statistics | XLS | päevas/nädalas/kuus | Maailma/USA hinnad | https://www.eia.gov/opendata/, https://www.eia.gov/dnav/pet/pet_pri_spt_s1_w.htm, https://www.eia.gov/dnav/pet/xls/PET_PRI_SPT_S1_W.xls |
-| Yahoo Finance | JSON | Kord nädalas (Reede) | Euro ja dollari kurss | https://query1.finance.yahoo.com/v8/finance/chart/EURUSD%3DX?interval=1wk&range=5y |
+| US Statistics | XLS | Päevas/nädalas/kuus | Maailma/USA hinnad | https://www.eia.gov/opendata/, https://www.eia.gov/dnav/pet/pet_pri_spt_s1_w.htm, https://www.eia.gov/dnav/pet/xls/PET_PRI_SPT_S1_W.xls |
+| Yahoo Finance | JSON | Kord nädalas (reede) | Euro ja dollari kurss | https://query1.finance.yahoo.com/v8/finance/chart/EURUSD%3DX?interval=1wk&range=5y |
 | Teadmiseks | JSON | Päevas | Tallinna kütusehinnad | https://teadmiseks.ee/wp-content/themes/Total/fuel-chart-30d.php |
 
 ## Andmevoog
@@ -56,7 +56,6 @@ flowchart LR
     subgraph Consumption["Tarbimine"]
         dashboard[Näidikulaud]
         quality[Andmekvaliteedi testid]
-        alerts[Hinnamuutuste teavitused]
     end
 
     eu --> file
@@ -106,4 +105,4 @@ flowchart LR
 
 ## Privaatsus ja turve
 
-Meie projektis on kasutusel avalikud andmed, ja ei ole tegemist ei isiku ega turvet vajavate andmetega.
+Meie projektis on kasutusel avalikud andmed, ükski andmepunkt ei vaja turvet.
