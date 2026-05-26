@@ -41,6 +41,8 @@ flowchart LR
             gpr[GPR Index\nXLS — kord kuus]
         end
 
+    end
+
     subgraph Ingestion["Sissevõtt (Airflow DAG)"]
         extract[Python Extract]
         load[Python Load]
