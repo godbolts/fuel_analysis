@@ -1,0 +1,4 @@
+.env
+config/
+dags/__pycache__/
+logs/
