@@ -17,27 +17,25 @@ flowchart LR
     subgraph Sources["Andmeallikad"]
 
         subgraph Weekly["Nädalased allikad"]
-            eu[European Weekly Oil Bulletin<br/>XLSX<br/>Neljapäev]
-            yahoo[Yahoo Finance EUR/USD<br/>JSON<br/>Reede]
+            eu[EU Weekly Oil Bulletin\nXLSX — neljapäev]
+            yahoo_brent[Yahoo Finance BZ=F\nJSON — reaalajas]
+            yahoo_fx[Yahoo Finance EURUSD=X\nJSON — reaalajas]
+            yahoo_ind[Yahoo Finance\nDXY / VIX / OVX\nJSON — reaalajas]
         end
 
-        subgraph Frequent["Sagedased allikad"]
-            oil[OilPrice API<br/>JSON<br/>5 min]
-            teadmiseks[Teadmiseks.ee<br/>JSON<br/>Päev]
+        subgraph Frequent["Statistilised allikad"]
+            eia_spot[EIA spothinnad\nXLS — esmaspäev]
+            eia_varud[EIA naftavarud\nXLS — kolmapäev]
+            gpr[GPR Index\nXLS — kord kuus]
         end
 
-        subgraph Statistical["Statistilised allikad"]
-            eia[US EIA Statistics<br/>XLS/XLSX/API<br/>Päev/Nädal/Kuu]
-        end
+    subgraph Ingestion["Sissevõtt (Airflow DAG)"]
+        extract[Python Extract]
+        load[Python Load]
+        scheduler[Airflow Scheduler\nreede 08:00 UTC]
     end
 
-    subgraph Ingestion["Sissevõtt"]
-        api[API Connector]
-        file[File Loader]
-        scheduler[Scheduler]
-    end
-
-    subgraph Storage["Andmeladu"]
+    subgraph Storage["Andmeladu (PostgreSQL)"]
         staging[(staging)]
         transform[Transformatsioon]
         mart[(mart)]
@@ -48,26 +46,23 @@ flowchart LR
         quality[Andmekvaliteedi testid]
     end
 
-    eu --> file
-    eia --> file
+    eu --> extract
+    yahoo_brent --> extract
+    yahoo_fx --> extract
+    yahoo_ind --> extract
+    eia_spot --> extract
+    eia_varud --> extract
+    gpr --> extract
 
-    oil --> api
-    yahoo --> api
-    teadmiseks --> api
-    eia --> api
-
-    scheduler --> api
-    scheduler --> file
-
-    api --> staging
-    file --> staging
+    scheduler --> extract
+    extract --> load
+    load --> staging
 
     staging --> transform
     transform --> mart
 
     mart --> dashboard
     mart --> quality
-
 ```
 
 Täpsem kirjeldus: [`docs/arhitektuur.md`](docs/arhitektuur.md)
@@ -76,17 +71,20 @@ Täpsem kirjeldus: [`docs/arhitektuur.md`](docs/arhitektuur.md)
 
 | Allikas | Tüüp | Ajas muutuv? | Roll | Link |
 |---------|------|--------------|------|------|
-| European Weekly Oil Bulletin | xlsx | Kord nädalas (neljapäevit) | Baltikumide hinnad | https://energy.ec.europa.eu/document/download/906e60ca-8b6a-44e7-8589-652854d2fd3f_en?filename=Weekly_Oil_Bulletin_Prices_History_maticni_4web.xlsx |
-| Oil Price | JSON | 5 minutit | Maailma hinnad | https://www.oilpriceapi.com |
-| US Statistics | XLS | Päevas/nädalas/kuus | Maailma/USA hinnad | https://www.eia.gov/opendata/, https://www.eia.gov/dnav/pet/pet_pri_spt_s1_w.htm, https://www.eia.gov/dnav/pet/xls/PET_PRI_SPT_S1_W.xls |
-| Yahoo Finance | JSON | Kord nädalas (reede) | Euro ja dollari kurss | https://query1.finance.yahoo.com/v8/finance/chart/EURUSD%3DX?interval=1wk&range=5y |
-| Teadmiseks | JSON | Päevas | Tallinna kütusehinnad | https://teadmiseks.ee/wp-content/themes/Total/fuel-chart-30d.php |
+| EU Weekly Oil Bulletin | XLSX | Neljapäeviti | EE/LV/LT Euro95 ja diisel €/l | https://energy.ec.europa.eu/document/download/906e60ca-8b6a-44e7-8589-652854d2fd3f_en?filename=Weekly_Oil_Bulletin_Prices_History_maticni_4web.xlsx |
+| Yahoo Finance (BZ=F) | JSON API | Reaalajas | Brent toornafta nädala sulgemishind USD/bbl | https://query1.finance.yahoo.com/v8/finance/chart/BZ%3DF?interval=1wk |
+| Yahoo Finance (EURUSD=X) | JSON API | Reaalajas | EUR/USD vahetuskurss | https://query1.finance.yahoo.com/v8/finance/chart/EURUSD%3DX?interval=1wk |
+| Yahoo Finance (DX-Y.NYB, ^VIX, ^OVX) | JSON API | Reaalajas | DXY, VIX, OVX indikaatorid | https://query1.finance.yahoo.com/v8/finance/chart/DX-Y.NYB?interval=1wk |
+| EIA spothinnad (PET_PRI_SPT_S1_W) | XLS | Esmaspäeviti | US Gulf Coast bensiin ja diisel $/gal | https://www.eia.gov/dnav/pet/xls/PET_PRI_SPT_S1_W.xls |
+| EIA naftavarud (WCRSTUS1) | XLS | Kolmapäeviti | USA toornafta nädalased varud (tuh. bbl) | https://www.eia.gov/dnav/pet/hist_xls/WCRSTUS1w.xls |
+| Caldara & Iacoviello GPR | XLS | ~Kord kuus | Geopoliitilise riski päevane indeks | https://www.matteoiacoviello.com/gpr_files/data_gpr_daily_recent.xls |
+
 
 ## Stack
 
 | Komponent | Tööriist |
 |-----------|---------|
-| Sissevõtt | [Python / Airflow / muu] |
+| Sissevõtt | Python + Apache Airflow |
 | Transformatsioon | [SQL / dbt / muu] |
 | Andmehoidla | PostgreSQL |
 | Näidikulaud | [Superset / Streamlit / muu] |
@@ -96,38 +94,49 @@ Täpsem kirjeldus: [`docs/arhitektuur.md`](docs/arhitektuur.md)
 
 ```bash
 # 1. Klooni repo ja liigu kausta
-git clone <repo-url>
-cd <projekti-kaust>
+git clone https://github.com/godbolts/fuel_analysis.git
+cd fuel_analysis
 
 # 2. Kopeeri keskkonnamuutujad
-cp .env.example .env
-# Muuda .env failis paroolid ja muud seaded vastavalt vajadusele
+cp env.example .env
+# Muuda .env failis paroolid vastavalt vajadusele
 
 # 3. Käivita teenused
 docker compose up -d --build
 
-# 4. [Vabatahtlik: käivita sissevõtt käsitsi esimesel korral]
-# docker compose exec pipeline python scripts/run_pipeline.py run-all
+
+-------------------
+# 4. Peata teenused (andmed säilivad)
+docker compose down
+
+# Peata teenused ja kustuta kõik andmed (fresh start)
+docker compose down -v
 ```
 
-Airflow (kui kasutatakse): http://localhost:8080 (kasutaja: airflow / parool: airflow)
+Airflow: http://localhost:8080 
 Näidikulaud: http://localhost:[PORT]
 
 ## Saladused ja konfiguratsioon
 
-Kõik saladused (paroolid, API võtmed, andmebaasi URL-id) on `.env` failis. Repos on ainult `.env.example`, mis näitab vajalike muutujate struktuuri ilma tegelike väärtusteta. Päris `.env` faili ei tohi GitHubi panna - see on `.gitignore`-s.
+Kõik saladused (paroolid, API võtmed, andmebaasi URL-id) on `.env` failis. 
 
 Vajalikud muutujad:
 
 | Muutuja | Tähendus | Näide |
 |---------|----------|-------|
-| `DB_PASSWORD` | PostgreSQL parool | (saladus) |
-| `[teised]` | ... | ... |
+| `POSTGRES_USER` | Andmebaasi kasutajanimi | `bensiin` |
+| `POSTGRES_PASSWORD` | Andmebaasi parool | (saladus) |
+| `POSTGRES_DB` | Andmebaasi nimi | `bensiin` |
+| `AIRFLOW_USER` | Airflow UI kasutajanimi | `nafta` |
+| `AIRFLOW_PASSWORD` | Airflow UI parool | (saladus) |
+| `AIRFLOW_DB` | Airflow metaandmebaasi nimi | `nafta` |
+| `AIRFLOW__API_AUTH__JWT_SECRET` | JWT allkirja saladus | (saladus) |
+| `AIRFLOW_UID` | Airflow konteinerikasutaja UID | `50000` |
 
 ## Andmevoog lühidalt
 
-1. **Sissevõtt** — [Kirjelda, kuidas andmed allikast kätte saadakse]
-2. **Laadimine** — Andmed laaditakse `staging` kihti
+1. **Sissevõtt** — Python (requests + pandas) tõmbab nädalasi andmeid 4 allikast: EU Kütusebulletään, EIA spothinnad ja naftavarud, GPR geopoliitiline riskiindeks, Yahoo Finance (Brent, EUR/USD, DXY, VIX, OVX). Airflow käivitab igal reedel kell 08:00 UTC.
+2. **Laadimine** — Andmed laaditakse staging kihti PostgreSQL-is (kokku 7 tabelit). Inkrementaalne, duplikaate ei lisata (ON CONFLICT DO NOTHING).
 3. **Transformatsioon** — [Kirjelda peamised arvutused ja mudelid]
 4. **Testimine** — [Mitu] andmekvaliteedi testi kontrollivad korrektsust
 5. **Näidikulaud** — [Kirjelda lühidalt, mida näidikulaud näitab]

@@ -13,11 +13,13 @@ Kui kiiresti ja võrdselt kanduvad bensiini/diisli hinnamuutused üle Baltikumi 
 
 | Allikas | Tüüp | Ajas muutuv? | Roll | Link |
 |---------|------|--------------|------|------|
-| European Weekly Oil Bulletin | xlsx | Kord nädalas (neljapäevit) | Baltikumide hinnad | https://energy.ec.europa.eu/document/download/906e60ca-8b6a-44e7-8589-652854d2fd3f_en?filename=Weekly_Oil_Bulletin_Prices_History_maticni_4web.xlsx |
-| Oil Price | JSON | 5 minutit | Maailma hinnad | https://www.oilpriceapi.com |
-| US Statistics | XLS | Päevas/nädalas/kuus | Maailma/USA hinnad | https://www.eia.gov/opendata/, https://www.eia.gov/dnav/pet/pet_pri_spt_s1_w.htm, https://www.eia.gov/dnav/pet/xls/PET_PRI_SPT_S1_W.xls |
-| Yahoo Finance | JSON | Kord nädalas (reede) | Euro ja dollari kurss | https://query1.finance.yahoo.com/v8/finance/chart/EURUSD%3DX?interval=1wk&range=5y |
-| Teadmiseks | JSON | Päevas | Tallinna kütusehinnad | https://teadmiseks.ee/wp-content/themes/Total/fuel-chart-30d.php |
+| EU Weekly Oil Bulletin | XLSX | Neljapäeviti | EE/LV/LT Euro95 ja diisel €/l | https://energy.ec.europa.eu/document/download/906e60ca-8b6a-44e7-8589-652854d2fd3f_en?filename=Weekly_Oil_Bulletin_Prices_History_maticni_4web.xlsx |
+| Yahoo Finance (BZ=F) | JSON API | Reaalajas | Brent toornafta nädala sulgemishind USD/bbl | https://query1.finance.yahoo.com/v8/finance/chart/BZ%3DF?interval=1wk |
+| Yahoo Finance (EURUSD=X) | JSON API | Reaalajas | EUR/USD vahetuskurss | https://query1.finance.yahoo.com/v8/finance/chart/EURUSD%3DX?interval=1wk |
+| Yahoo Finance (DX-Y.NYB, ^VIX, ^OVX) | JSON API | Reaalajas | DXY, VIX, OVX indikaatorid | https://query1.finance.yahoo.com/v8/finance/chart/DX-Y.NYB?interval=1wk |
+| EIA spothinnad (PET_PRI_SPT_S1_W) | XLS | Esmaspäeviti | US Gulf Coast bensiin ja diisel $/gal | https://www.eia.gov/dnav/pet/xls/PET_PRI_SPT_S1_W.xls |
+| EIA naftavarud (WCRSTUS1) | XLS | Kolmapäeviti | USA toornafta nädalased varud (tuh. bbl) | https://www.eia.gov/dnav/pet/hist_xls/WCRSTUS1w.xls |
+| Caldara & Iacoviello GPR | XLS | ~Kord kuus | Geopoliitilise riski päevane indeks | https://www.matteoiacoviello.com/gpr_files/data_gpr_daily_recent.xls |
 
 ## Andmevoog
 
@@ -27,27 +29,25 @@ flowchart LR
     subgraph Sources["Andmeallikad"]
 
         subgraph Weekly["Nädalased allikad"]
-            eu[European Weekly Oil Bulletin<br/>XLSX<br/>Neljapäev]
-            yahoo[Yahoo Finance EUR/USD<br/>JSON<br/>Reede]
+            eu[EU Weekly Oil Bulletin\nXLSX — neljapäev]
+            yahoo_brent[Yahoo Finance BZ=F\nJSON — reaalajas]
+            yahoo_fx[Yahoo Finance EURUSD=X\nJSON — reaalajas]
+            yahoo_ind[Yahoo Finance\nDXY / VIX / OVX\nJSON — reaalajas]
         end
 
-        subgraph Frequent["Sagedased allikad"]
-            oil[OilPrice API<br/>JSON<br/>5 min]
-            teadmiseks[Teadmiseks.ee<br/>JSON<br/>Päev]
+        subgraph Frequent["Statistilised allikad"]
+            eia_spot[EIA spothinnad\nXLS — esmaspäev]
+            eia_varud[EIA naftavarud\nXLS — kolmapäev]
+            gpr[GPR Index\nXLS — kord kuus]
         end
 
-        subgraph Statistical["Statistilised allikad"]
-            eia[US EIA Statistics<br/>XLS/XLSX/API<br/>Päev/Nädal/Kuu]
-        end
+    subgraph Ingestion["Sissevõtt (Airflow DAG)"]
+        extract[Python Extract]
+        load[Python Load]
+        scheduler[Airflow Scheduler\nreede 08:00 UTC]
     end
 
-    subgraph Ingestion["Sissevõtt"]
-        api[API Connector]
-        file[File Loader]
-        scheduler[Scheduler]
-    end
-
-    subgraph Storage["Andmeladu"]
+    subgraph Storage["Andmeladu (PostgreSQL)"]
         staging[(staging)]
         transform[Transformatsioon]
         mart[(mart)]
@@ -58,19 +58,17 @@ flowchart LR
         quality[Andmekvaliteedi testid]
     end
 
-    eu --> file
-    eia --> file
+    eu --> extract
+    yahoo_brent --> extract
+    yahoo_fx --> extract
+    yahoo_ind --> extract
+    eia_spot --> extract
+    eia_varud --> extract
+    gpr --> extract
 
-    oil --> api
-    yahoo --> api
-    teadmiseks --> api
-    eia --> api
-
-    scheduler --> api
-    scheduler --> file
-
-    api --> staging
-    file --> staging
+    scheduler --> extract
+    extract --> load
+    load --> staging
 
     staging --> transform
     transform --> mart
