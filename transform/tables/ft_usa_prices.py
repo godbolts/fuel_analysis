@@ -11,6 +11,10 @@ Teisendused:
   USD/gallon → USD/liiter (1 gallon = 3.78541 l)
   USD/liiter → EUR/liiter (jagatud EUR/USD kursiga)
   eia_varud: tase (tuh. bbl) + delta eelmisest nädalast (LAG)
+
+Migratsioon:
+  ADD COLUMN IF NOT EXISTS tagab, et vana skeemiga tabel uuendatakse vaikselt
+  ilma errori või andmekaotseta.
 """
 
 CREATE_TABLE_SQL = """
@@ -26,6 +30,12 @@ CREATE TABLE IF NOT EXISTS public.ft_usa_prices (
     add_timestamp      TIMESTAMPTZ,
     PRIMARY KEY (week_start_date, country_code)
 );
+"""
+
+ALTER_TABLE_SQL = """
+ALTER TABLE public.ft_usa_prices
+    ADD COLUMN IF NOT EXISTS eia_varud_tuh_bbl NUMERIC(12,0),
+    ADD COLUMN IF NOT EXISTS eia_varud_delta   NUMERIC(12,0);
 """
 
 SELECT_SQL = """
@@ -83,6 +93,7 @@ def run(hook):
             with conn.cursor() as cur:
 
                 cur.execute(CREATE_TABLE_SQL)
+                cur.execute(ALTER_TABLE_SQL)
 
                 if _table_is_empty(cur):
                     where_clause = ""
