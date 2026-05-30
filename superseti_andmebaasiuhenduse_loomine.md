@@ -38,9 +38,9 @@ Sisesta andmebaasiühenduse väljadele järgmised väärtused:
 |---|---|
 | Host | `analytics-db` |
 | Port | `5432` |
-| Database name | `.env` failist: `POSTGRES_DB` |
-| Username | `.env` failist: `POSTGRES_USER` |
-| Password | `.env` failist: `POSTGRES_PASSWORD` |
+| Database name | `.env` failist: `POSTGRES_DB`=... |
+| Username | `.env` failist: `POSTGRES_USER`=... |
+| Password | `.env` failist: `POSTGRES_PASSWORD`=... |
 
 ## 5. Loo ühendus
 
