@@ -7,28 +7,52 @@
 - [+] Docker Compose käivitab kõik teenused
 - [+] Andmeid saadakse allikast kätte
 - [+] Andmed laetakse `staging` kihti
-- [ ] Vähemalt üks transformatsioon toimib
+- [+] Vähemalt üks transformatsioon toimib
 - [ ] Vähemalt üks näidikulaud on nähtaval
 - [ ] Vähemalt üks andmekvaliteedi test läbib
 
-**Valmis on täielik extract + load pipeline:**
-- Docker Compose käivitab 4 konteinerit: Airflow webserver, scheduler, API server + PostgreSQL analüütikabaas
-- Airflow DAG `kutuse_hind_pipeline` laeb andmeid **7 allikast** 7 staging tabelisse:
-  - `staging.bulletin_raw` — EE/LV/LT Euro95 ja diisel €/l (EU Weekly Oil Bulletin)
-  - `staging.brent_raw` — Brent toornafta nädala sulgemishind USD/bbl (Yahoo Finance)
-  - `staging.valuutakurss` — EUR/USD vahetuskurss (Yahoo Finance)
-  - `staging.yahoo_indikaatorid_raw` — DXY, VIX, OVX indikaatorid (Yahoo Finance)
-  - `staging.eia_spothinnad_raw` — US Gulf Coast bensiin ja diisel $/gal (EIA)
-  - `staging.eia_varud_raw` — USA toornafta varud tuh. bbl (EIA)
-  - `staging.gpr_raw` — Geopoliitilise riski päevane indeks (Caldara & Iacoviello)
-- Kõik 14 Airflow task-i (7 extract + 7 load) jooksevad edukalt
-- Inkrementaalne laadimine, laeb ainult uued read alates viimasest kirjest
-- Andmed on toorandmed (ELT põhimõte), kus staging kihis teisendusi pole
-- Ajakava: iga reede 08:00 UTC
+## Valmis on täielik ELT pipeline staging- ja mart-kihtidega
+ 
+Docker Compose käivitab **5 konteinerit**: Airflow API server, scheduler, DAG processor, PostgreSQL metaandmebaas ja PostgreSQL/DuckDB analüütikabaas.
+ 
+### Ingest — `kutuse_hind_pipeline`
+ 
+Laeb andmeid **7 allikast** 7 staging tabelisse (ajakava: reede 08:00 UTC):
+ 
+| Tabel | Kirjeldus | Allikas |
+|---|---|---|
+| `staging.bulletin_raw` | EE/LV/LT Euro95 ja diisel €/l | EU Weekly Oil Bulletin |
+| `staging.brent_raw` | Brent toornafta nädala sulgemishind USD/bbl | Yahoo Finance |
+| `staging.valuutakurss` | EUR/USD vahetuskurss | Yahoo Finance |
+| `staging.yahoo_indikaatorid_raw` | DXY, VIX, OVX indikaatorid | Yahoo Finance |
+| `staging.eia_spothinnad_raw` | US Gulf Coast bensiin ja diisel $/gal | EIA |
+| `staging.eia_varud_raw` | USA toornafta varud tuh. bbl | EIA |
+| `staging.gpr_raw` | Geopoliitilise riski päevane indeks | Caldara & Iacoviello |
+ 
+Kõik 14 taski (7 extract + 7 load) jooksevad edukalt.
+ 
+### Transform — `kutuse_transform_pipeline`
+ 
+Transformeerib staging andmed **7 mart-tabelisse** (ajakava: reede 09:00 UTC):
+ 
+| Tabel | Kirjeldus |
+|---|---|
+| `public.dm_date_aggregation` | Kalendri dimensioon |
+| `public.dm_country` | Riigi dimensioon (restcountries.com API) |
+| `public.ft_baltikum_prices` | EE/LV/LT kütuse jaemüügihinnad EUR/l |
+| `public.ft_usa_prices` | USA kütuse spothinnad USD/l ja EUR/l + naftavarud |
+| `public.ft_brent` | Brent toornafta hind USD/l, EUR/l, USD/bbl, EUR/bbl |
+| `public.ft_market` | DXY, VIX, OVX, GPR nädala keskmised |
+| `public.ft_exchange_rate` | EUR/USD ja USD/EUR kursid |
+ 
+### Põhimõtted
+ 
+- **ELT** — toorandmed hoitakse staging kihis muutmata kujul, teisendused toimuvad eraldi transform kihis
+- **Inkrementaalne laadimine** — mõlemad pipeline'id laevad ainult uued read alates viimasest kirjest
 
 ## Järgmised sammud
 
-1. **SQL transform kiht** (`fuel_analysis/transforms/`) — Bulletin €/1000L → €/l; Brent USD/bbl → EUR/l; GPR päevased → nädala keskmised; kõigi allikate JOIN ühte laia tabelisse
+1. **Visualiseerimise kiht** - Vaja on läbi Superseti genereerida Dashboard mis kajastab tabelites olevaid andmeid.
 - [Teine tegevus]
 - [Kolmas tegevus]
 
