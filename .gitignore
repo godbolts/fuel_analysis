@@ -2,3 +2,5 @@
 config/
 dags/__pycache__/
 logs/
+__pycache__/
+*.pyc

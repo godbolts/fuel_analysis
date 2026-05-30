@@ -1,6 +1,7 @@
-# Baltikumi kutusehinnad — Airflow + PostgreSQL
+# Baltikumi kutusehinnad — Airflow + PostgreSQL + Superset
 # Kaivitamine: docker compose up -d
-# UI: http://localhost:8080 (kasutaja/parool: vaata .env)
+# Airflow UI: http://localhost:8080
+# Superset UI: http://localhost:8088
 
 x-airflow-common:
   &airflow-common
@@ -27,7 +28,7 @@ x-airflow-common:
     - ./logs:/opt/airflow/logs
     - ./config:/opt/airflow/config
     - ./plugins:/opt/airflow/plugins
-    - ./transform:/opt/airflow/transform 
+    - ./transform:/opt/airflow/transform
   user: "${AIRFLOW_UID}:0"
   depends_on:
     &airflow-common-depends-on
@@ -152,6 +153,73 @@ services:
       _PIP_ADDITIONAL_REQUIREMENTS: ''
     user: "0:0"
 
+  # --- Superseti metaandmebaas ---
+  superset-db:
+    image: postgres:16
+    container_name: kutus-superset-db
+    environment:
+      POSTGRES_USER: superset
+      POSTGRES_PASSWORD: superset
+      POSTGRES_DB: superset_meta
+    volumes:
+      - superset-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "superset"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+
+  # --- Superseti esmane seadistus ---
+  superset-init:
+    build:
+      context: ./superset
+    container_name: kutus-superset-init
+    depends_on:
+      superset-db:
+        condition: service_healthy
+      analytics-db:
+        condition: service_healthy
+    environment:
+      DATABASE_URI: postgresql+psycopg2://superset:superset@superset-db:5432/superset_meta
+      SECRET_KEY: ${SUPERSET_SECRET_KEY}
+      SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config.py
+      SUPERSET_ADMIN_USER: ${SUPERSET_ADMIN_USER}
+      SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD}
+      SUPERSET_ADMIN_EMAIL: ${SUPERSET_ADMIN_EMAIL}
+    volumes:
+      - ./superset/superset_config.py:/app/pythonpath/superset_config.py
+    command: >
+      /bin/bash -c "superset db upgrade &&
+      superset fab create-admin --username $${SUPERSET_ADMIN_USER} --firstname Superset --lastname Admin --email $${SUPERSET_ADMIN_EMAIL} --password $${SUPERSET_ADMIN_PASSWORD} || true &&
+      superset init"
+    restart: "no"
+
+  # --- Apache Superset UI ---
+  superset:
+    build:
+      context: ./superset
+    container_name: kutus-superset
+    depends_on:
+      superset-db:
+        condition: service_healthy
+      analytics-db:
+        condition: service_healthy
+      superset-init:
+        condition: service_completed_successfully
+    ports:
+      - "8088:8088"
+    environment:
+      DATABASE_URI: postgresql+psycopg2://superset:superset@superset-db:5432/superset_meta
+      SECRET_KEY: ${SUPERSET_SECRET_KEY}
+      SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config.py
+    volumes:
+      - ./superset/superset_config.py:/app/pythonpath/superset_config.py
+    command: >
+      /bin/bash -c "superset run -h 0.0.0.0 -p 8088"
+    restart: always
+
 volumes:
   airflow-db-volume:
   analytics-db-volume:
+  superset-db-volume:
