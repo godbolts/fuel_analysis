@@ -19,7 +19,26 @@ def kutuse_transform_pipeline():
         from run_transforms import run_all
         run_all()
 
-    run_transforms()
+    @task()
+    def run_data_quality_tests():
+        import sys
+        sys.path.insert(0, "/opt/airflow/tests")
+        from data_quality_tests import run_all_tests
+       
+        results, passed, failed = run_all_tests()
+       
+        if failed > 0:
+            raise Exception(f"Andmekvaliteedi testid ebaõnnestusid: {failed}/{len(results)}")
+       
+        return {"passed": passed, "failed": failed, "total": len(results)}
+
+
+    # Define task dependencies
+    transforms = run_transforms()
+    tests = run_data_quality_tests()
+   
+    transforms >> tests
+
 
 
 kutuse_transform_pipeline()

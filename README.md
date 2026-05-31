@@ -237,19 +237,27 @@ Vajalikud muutujad:
 1. **Sissevõtt** — Python (requests + pandas) tõmbab nädalasi andmeid 4 allikast: EU Kütusebulletään, EIA spothinnad ja naftavarud, GPR geopoliitiline riskiindeks, Yahoo Finance (Brent, EUR/USD, DXY, VIX, OVX). Airflow käivitab igal reedel kell 08:00 UTC.
 2. **Laadimine** — Andmed laaditakse staging kihti PostgreSQL-is (kokku 7 tabelit). Inkrementaalne, duplikaate ei lisata (ON CONFLICT DO NOTHING).
 3. **Transformatsioon** — Toorandmed normaliseeritakse ühtsele nädalasele ajavahemikule (date_trunc('week')::date), hinnad teisendatakse võrreldavatesse ühikutesse (USD/gallon → USD/l ÷ 3.78541, EUR/1000l → EUR/l ÷ 1000, USD → EUR ÷ EUR/USD kurss, USD/barrel → USD/l ÷ 158.987), GPR päevased väärtused agregeeritatakse nädala keskmiseks (AVG), naftavarude nädalane muutus arvutatakse aknafunktsiooniga (LAG), ning dimensioonitabelid (dm_country, dm_date_aggregation) rikastatakse välisandmetega (restcountries.com API, kalendriarvutused).
-4. **Testimine** — [Mitu] andmekvaliteedi testi kontrollivad korrektsust
+4. **Testimine** — andmekvaliteedi testid kontrollivad andmete täielikkust, korrektsust ja värskust (staging andmete olemasolu, hindade positiivsus, vahetuskursside realistlikkus, riigikoodide formaadi korrektsus). Kriitilised testid blokeerivad pipeline'i ebaõnnestumise korral.
 5. **Näidikulaud** — [Kirjelda lühidalt, mida näidikulaud näitab]
 
 ## Andmekvaliteedi testid
 
-Projekt kontrollib järgmist:
+Projekt kontrollib järgmist automaatselt pärast iga transformatsiooni:
 
-1. [Test 1 - nt: kasutajate ID on unikaalne]
-2. [Test 2 - nt: tellimuse summa pole null]
-3. [Test 3 - nt: kuupäev jääb vahemikku 2020-2026]
-[Lisa rohkem, kui sul on]
+**Kriitilised testid (blokeerivad pipeline'i):**
+1. **Andmete olemasolu** — Staging tabel sisaldab andmeid
+2. **Täielikkus** — Vajalikud riigikoodid staging tabelist eksisteerivad dm_country tabelis
 
-Testide tulemused: [kuhu salvestatakse / kuidas vaadata]
+**Hoiatuse testid:**
+3. **Hindade korrektsus** — Hinnad on positiivsed
+4. **Formaadi korrektsus** — Riigikoodid on täpselt 2 tähemärki pikad
+5. **Vahetuskursi piirid** — EUR/USD vahemikus 0.5-2.0
+6. **Andmete värskus** — Viimased andmed pole vanemad kui 10 päeva
+7. **Tuleviku kuupäevad** — Andmetes ei ole tuleviku kuupäevi
+8. **Null väärtused** — Kriitilistes veergudes ei ole null väärtuseid
+
+Testide tulemused logitakse Airflow UI-s ja ebaõnnestumise korral DAG run märgitakse ebaõnnestunuks.
+
 
 ## Projekti struktuur
 
@@ -264,12 +272,15 @@ Testide tulemused: [kuhu salvestatakse / kuidas vaadata]
 ├── transform_tables.md                  ← mart-kihis tabelite dokumentatsioon
 ├── dags/
 │   ├── kutuse_hind_pipeline.py          ← ingest DAG (reede 11:00)
-│   └── transform_pipeline.py           ← transform DAG (reede 12:00)
+│   └── transform_pipeline.py            ← transform + test DAG (reede 12:00)
 ├── docs/
 │   ├── arhitektuur.md
 │   └── progress.md
 ├── init/                                ← PostgreSQL init skriptid (staging skeemi loomine)
 ├── superset/                            ← Superset konfiguratsioon ja seadistus
+├── tests/  
+│   ├── README.md                       ← testide dokumentatsioon
+│   └── data_quality_tests.py           ← test funktsioonid
 └── transform/
     ├── run_transforms.py                ← orkestreerib kõik transformatsioonid
     └── tables/

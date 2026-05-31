@@ -29,6 +29,7 @@ x-airflow-common:
     - ./config:/opt/airflow/config
     - ./plugins:/opt/airflow/plugins
     - ./transform:/opt/airflow/transform
+    - ./tests:/opt/airflow/tests
   user: "${AIRFLOW_UID}:0"
   depends_on:
     &airflow-common-depends-on
@@ -139,11 +140,11 @@ services:
         if [[ -z "${AIRFLOW_UID}" ]]; then
           export AIRFLOW_UID=$$(id -u)
         fi
-        mkdir -v -p /opt/airflow/{logs,dags,plugins,config}
+        mkdir -v -p /opt/airflow/{logs,dags,plugins,config,tests}
         /entrypoint airflow version
         /entrypoint airflow config list >/dev/null
         chown -R "${AIRFLOW_UID}:0" /opt/airflow/
-        chown -v -R "${AIRFLOW_UID}:0" /opt/airflow/{logs,dags,plugins,config}
+        chown -v -R "${AIRFLOW_UID}:0" /opt/airflow/{logs,dags,plugins,config,tests}
     environment:
       <<: *airflow-common-env
       _AIRFLOW_DB_MIGRATE: 'true'
