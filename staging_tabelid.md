@@ -62,7 +62,7 @@ Kõik teisendused toimuvad SQL transform-kihis (`fuel_analysis/transforms/`).
 | Veerg               | Tüüp         | Kirjeldus                                       | Vajalik tegevus                           |
 |---------------------|--------------|-------------------------------------------------|-------------------------------------------|
 | `week_date`         | DATE         | EIA raporteerimiskuupäev (reede)                | Konverteeri esmaspäeva kuupäevaks         |
-| `bensiin95_usd_gal` | NUMERIC(8,4) | Bensiin95 spothind (USD/gallon)                 | Teisenda €/l                              |
+| `bensiin95_usd_gal` | NUMERIC(8,4) | US Gulf Coast RBOB Regular Gasoline spothind (USD/gallon) — lähim vaste Euro 95-le | Teisenda €/l |
 | `diisel_usd_gal`    | NUMERIC(8,4) | Diisel (ULSD) spothind (USD/gallon)             | Teisenda €/l                              |
 
 > `eur_usd` tuleb `staging.valuutakurss` tabelist. 3.78541 = liitrit ühes USA gallonis.
