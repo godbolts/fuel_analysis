@@ -8,8 +8,8 @@
 - [+] Andmeid saadakse allikast kätte
 - [+] Andmed laetakse `staging` kihti
 - [+] Vähemalt üks transformatsioon toimib
-- [ ] Vähemalt üks näidikulaud on nähtaval
-- [ ] Vähemalt üks andmekvaliteedi test läbib
+- [+] Vähemalt üks näidikulaud on nähtaval
+- [+] Vähemalt üks andmekvaliteedi test läbib
 
 ## Valmis on täielik ELT pipeline staging- ja mart-kihtidega
  
@@ -52,13 +52,12 @@ Transformeerib staging andmed **7 mart-tabelisse** (ajakava: reede 09:00 UTC):
 
 ## Järgmised sammud
 
-1. **Visualiseerimise kiht** - Vaja on läbi Superseti genereerida Dashboard mis kajastab tabelites olevaid andmeid.
-- [Teine tegevus]
-- [Kolmas tegevus]
+1. Automaatne Andmete Visualiseerimine startupil.
+2. Dünaamilisem transformatsioon, mis eemaldab auke andmetes.
 
 ## Mis takistab
 
-- Praegu pole blokeerivaid probleeme
+- Praegu pole blokeerivaid probleeme, on vaja lihtsalt võtta aega ja arendada.
 - EIA allikad avaldavad andmeid 1–2 nädala viivitusega, mis on normaalne, see ei ole mitte viga
 - GPR indeks uueneb ~kord kuus (päevased väärtused olemas, nädala agregeerimine tehakse transform-kihis)
 
