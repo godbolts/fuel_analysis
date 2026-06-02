@@ -1,6 +1,7 @@
 """
 Loob automaatselt andmebaasiühenduse ja datasettid Supersetis.
 Käivitatakse superset-init konteineris pärast 'superset init'.
+Tabelid leitakse dünaamiliselt analytics-db public skeemast.
 """
 import os
 
@@ -9,20 +10,15 @@ os.environ.setdefault("SUPERSET_CONFIG_PATH", "/app/pythonpath/superset_config.p
 from superset.app import create_app
 from superset.extensions import db as superset_db
 
-MART_TABLES = [
-    "ft_baltikum_prices",
-    "ft_brent",
-    "ft_usa_prices",
-    "ft_market",
-    "ft_exchange_rate",
-    "dm_country",
-    "dm_date_aggregation",
-    "ft_price_forecast",
-]
+_user = os.environ["POSTGRES_USER"]
+_pass = os.environ["POSTGRES_PASSWORD"]
+_db   = os.environ["POSTGRES_DB"]
+DB_URI = f"postgresql+psycopg2://{_user}:{_pass}@analytics-db:5432/{_db}"
 
 app = create_app()
 
 with app.app_context():
+    from sqlalchemy import create_engine, inspect
     from superset.models.core import Database
     from superset.connectors.sqla.models import SqlaTable
 
@@ -31,7 +27,7 @@ with app.app_context():
     if not db_entry:
         db_entry = Database(
             database_name="Kütuse analüütikabaas",
-            sqlalchemy_uri="postgresql+psycopg2://bensiin:bensiinikanister@analytics-db:5432/bensiin",
+            sqlalchemy_uri=DB_URI,
         )
         superset_db.session.add(db_entry)
         superset_db.session.commit()
@@ -39,8 +35,19 @@ with app.app_context():
     else:
         print("Andmebaasiühendus on juba olemas.")
 
+    # Leia kõik tabelid public skeemast otse andmebaasist
+    try:
+        engine = create_engine(DB_URI)
+        inspector = inspect(engine)
+        table_names = inspector.get_table_names(schema="public")
+        engine.dispose()
+        print(f"Leitud {len(table_names)} tabelit: {', '.join(table_names)}")
+    except Exception as e:
+        print(f"Andmebaas pole veel kättesaadav, datasette ei looda: {e}")
+        table_names = []
+
     # Datasettid
-    for table_name in MART_TABLES:
+    for table_name in table_names:
         existing = superset_db.session.query(SqlaTable).filter_by(
             table_name=table_name,
             database_id=db_entry.id,
@@ -53,10 +60,16 @@ with app.app_context():
             )
             superset_db.session.add(dataset)
             superset_db.session.flush()
-            dataset.fetch_metadata()
+            try:
+                dataset.fetch_metadata()
+            except Exception:
+                pass
             print(f"Dataset loodud: {table_name}")
         else:
-            existing.fetch_metadata()
+            try:
+                existing.fetch_metadata()
+            except Exception:
+                pass
             print(f"Dataset sünkroniseeritud: {table_name}")
 
     superset_db.session.commit()
