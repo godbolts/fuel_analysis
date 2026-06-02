@@ -7,10 +7,14 @@ Loogika:
   1. Tabel puudub       → loo tabel + täida kõik read
   2. Tabel on tühi      → täida kõik read
   3. Tabelis on andmed  → lisa ainult uued nädalad > MAX(week_start_date)
+
+Märkus:
+  pgduckdb ei tule hästi toime CREATE TABLE IF NOT EXISTS kui tabel juba eksisteerib —
+  eksisteerimise kontroll tehakse käsitsi information_schema kaudu.
 """
 
 CREATE_TABLE_SQL = """
-CREATE TABLE IF NOT EXISTS public.dm_date_aggregation (
+CREATE TABLE public.dm_date_aggregation (
     week_start_date   DATE         NOT NULL PRIMARY KEY,
     week_end_date     DATE         NOT NULL,
     year              SMALLINT     NOT NULL,
@@ -49,6 +53,17 @@ ON CONFLICT (week_start_date) DO UPDATE SET
 """
 
 
+def _table_exists(cur) -> bool:
+    cur.execute("""
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name   = 'dm_date_aggregation'
+        )
+    """)
+    return cur.fetchone()[0]
+
+
 def _table_is_empty(cur) -> bool:
     cur.execute("SELECT NOT EXISTS (SELECT 1 FROM public.dm_date_aggregation LIMIT 1)")
     return cur.fetchone()[0]
@@ -66,7 +81,10 @@ def run(hook):
         with conn:
             with conn.cursor() as cur:
 
-                cur.execute(CREATE_TABLE_SQL)
+                # pgduckdb: kontrollime ise, ei kasuta CREATE TABLE IF NOT EXISTS
+                if not _table_exists(cur):
+                    cur.execute(CREATE_TABLE_SQL)
+                    print("dm_date_aggregation: tabel loodud")
 
                 if _table_is_empty(cur):
                     where_clause = ""

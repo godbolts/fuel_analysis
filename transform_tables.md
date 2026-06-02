@@ -79,9 +79,10 @@ Eesti, Läti ja Leedu iganädalased kütusejaamahinnad eurodes liitri kohta.
 | `country_code` | CHAR(2) | Kahetäheline riigikood (EE/LV/LT) — PK osa, join `dm_country`-ga |
 | `petrol_price` | NUMERIC(6,3) | Euro 95 bensiini hind EUR/l |
 | `diesel_price` | NUMERIC(6,3) | Diislikütuse hind EUR/l |
+| `is_calculated` | BOOLEAN | TRUE kui rida on interpoleeritud lünga täitmiseks, FALSE päris andmetel |
 | `add_timestamp` | TIMESTAMPTZ | Kirje lisamise aeg |
 
-**Allikas:** EU Weekly Oil Bulletin (`staging.bulletin_raw`). Algsed väärtused on EUR/1000l, teisendatud EUR/l-ks (`/ 1000`).
+**Allikas:** EU Weekly Oil Bulletin (`staging.bulletin_raw`). Algsed väärtused on EUR/1000l, teisendatud EUR/l-ks (`/ 1000`). Puuduvad nädalad täidetakse lineaarse interpolatsiooniga — väärtus arvutatakse kahe lähima teadaoleva punkti vahelt ajalise kauguse järgi.
 
 ---
 
@@ -100,9 +101,10 @@ USA iganädalased kütuse spothinnad koos varude taseme ja nädalase muutusega.
 | `eur_usd_rate` | NUMERIC(8,6) | Sel nädalal kasutatud EUR/USD kurss |
 | `eia_varud_tuh_bbl` | NUMERIC(12,0) | USA toornafta kaubandusvarud (tuhat bbl) |
 | `eia_varud_delta` | NUMERIC(12,0) | Varude muutus eelmise nädalaga võrreldes (tuhat bbl) — negatiivne = varud vähenesid |
+| `is_calculated` | BOOLEAN | TRUE kui rida on interpoleeritud lünga täitmiseks, FALSE päris andmetel |
 | `add_timestamp` | TIMESTAMPTZ | Kirje lisamise aeg |
 
-**Allikas:** EIA US Gulf Coast spothinnad (`staging.eia_spothinnad_raw`). Teisendus: `USD/gallon ÷ 3.78541 = USD/liiter`. EUR/l saadakse jagamisel EUR/USD kursiga (`staging.valuutakurss`). Varude tase ja delta liidetakse `staging.eia_varud_raw` tabelist — join toimub nädala alguskuupäeva järgi, delta arvutatakse `LAG` funktsiooniga.
+**Allikas:** EIA US Gulf Coast spothinnad (`staging.eia_spothinnad_raw`). Teisendus: `USD/gallon ÷ 3.78541 = USD/liiter`. EUR/l saadakse jagamisel EUR/USD kursiga (`staging.valuutakurss`). Varude tase ja delta liidetakse `staging.eia_varud_raw` tabelist — join toimub nädala alguskuupäeva järgi, delta arvutatakse `LAG` funktsiooniga. Interpoleeritud ridadel on `eia_varud_delta` alati `NULL`.
 
 ---
 
@@ -118,9 +120,10 @@ Brent toornafta iganädalane sulgemishind neljas ühikus.
 | `usd_l` | NUMERIC(8,4) | Hind USD/liiter (jagatud 158.987-ga) |
 | `eur_l` | NUMERIC(8,4) | Hind EUR/liiter |
 | `eur_usd_rate` | NUMERIC(8,6) | Sel nädalal kasutatud EUR/USD kurss |
+| `is_calculated` | BOOLEAN | TRUE kui rida on interpoleeritud lünga täitmiseks, FALSE päris andmetel |
 | `add_timestamp` | TIMESTAMPTZ | Kirje lisamise aeg |
 
-**Allikas:** Yahoo Finance BZ=F (`staging.brent_raw`). Teisendus: `USD/barrel ÷ 158.987 = USD/liiter`. EUR väärtused saadakse jagamisel EUR/USD kursiga (`staging.valuutakurss`).
+**Allikas:** Yahoo Finance BZ=F (`staging.brent_raw`). Teisendus: `USD/barrel ÷ 158.987 = USD/liiter`. EUR väärtused saadakse jagamisel EUR/USD kursiga (`staging.valuutakurss`). Puuduvad nädalad täidetakse lineaarse interpolatsiooniga.
 
 ---
 
@@ -131,13 +134,14 @@ Iganädalased turuindikaatorid — dollari tugevus, volatiilsus ja geopoliitilin
 | Veerg | Tüüp | Kirjeldus |
 |---|---|---|
 | `week_start_date` | DATE | Nädala alguskuupäev (PK), join `dm_date_aggregation`-ga |
-| `dxy` | NUMERIC(8,4) | USA dollariindeks (USD tugevus vs EUR/JPY/GBP jt) |
-| `vix` | NUMERIC(8,4) | S&P 500 volatiilsusindeks (turu hirmuindeks) |
-| `ovx` | NUMERIC(8,4) | Nafta volatiilsusindeks (naftaturule spetsiifiline VIX) |
+| `dollar_index` | NUMERIC(8,4) | USA dollariindeks (USD tugevus vs EUR/JPY/GBP jt) |
+| `snp_index` | NUMERIC(8,4) | S&P 500 volatiilsusindeks (turu hirmuindeks) |
+| `oil_index` | NUMERIC(8,4) | Nafta volatiilsusindeks (naftaturule spetsiifiline VIX) |
 | `gpr_avg` | NUMERIC(10,2) | Geopoliitilise riski indeksi nädala keskmine (norm ~100, kriisi ajal >200) |
+| `is_calculated` | BOOLEAN | TRUE kui rida on interpoleeritud lünga täitmiseks, FALSE päris andmetel |
 | `add_timestamp` | TIMESTAMPTZ | Kirje lisamise aeg |
 
-**Allikas:** Yahoo Finance DXY/VIX/OVX (`staging.yahoo_indikaatorid_raw`). GPR päevased andmed (`staging.gpr_raw`) agregeeritatakse nädala keskmiseks üle kõigi päevade.
+**Allikas:** Yahoo Finance DXY/VIX/OVX (`staging.yahoo_indikaatorid_raw`). GPR päevased andmed (`staging.gpr_raw`) agregeeritatakse nädala keskmiseks üle kõigi päevade. Puuduvad nädalad täidetakse lineaarse interpolatsiooniga.
 
 ---
 
@@ -150,9 +154,10 @@ Iganädalane EUR/USD valuutakurss mõlemas suunas.
 | `week_start_date` | DATE | Nädala alguskuupäev (PK), join `dm_date_aggregation`-ga |
 | `eur_usd` | NUMERIC(8,6) | 1 EUR = X USD |
 | `usd_eur` | NUMERIC(8,6) | 1 USD = X EUR (arvutuslik: `1 / eur_usd`) |
+| `is_calculated` | BOOLEAN | TRUE kui rida on interpoleeritud lünga täitmiseks, FALSE päris andmetel |
 | `add_timestamp` | TIMESTAMPTZ | Kirje lisamise aeg |
 
-**Allikas:** Yahoo Finance EUR/USD nädalaandmed (`staging.valuutakurss`).
+**Allikas:** Yahoo Finance EUR/USD nädalaandmed (`staging.valuutakurss`). Puuduvad nädalad täidetakse lineaarse interpolatsiooniga — `usd_eur` arvutatakse alati interpoleeritud `eur_usd` pöördväärtusena.
 
 ---
 
