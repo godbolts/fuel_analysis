@@ -14,21 +14,34 @@ Kui mõni test ebaõnnestub, DAG run märgitakse ebaõnnestunuks.
 
 ## Testide Kategooriad
 
-### Kriitilised Testid
-Need blokeerivad pipeline'i, kui ebaõnnestuvad:
-- `test_staging_bulletin_has_data` - Veendu, et staging tabelis on andmeid
-- `test_dm_country_has_data` - Veendu, et dm_country tabelis on andmeid
+### Staging testid (`STAGING_TESTS`)
+Käivituvad kohe pärast laadimist (`run_staging_tests()` task):
+- `test_staging_bulletin_has_data` — staging.bulletin_raw sisaldab andmeid
+- `test_staging_brent_has_data` — staging.brent_raw sisaldab andmeid
+- `test_staging_eia_spothinnad_has_data` — staging.eia_spothinnad_raw sisaldab andmeid
+- `test_staging_eia_varud_has_data` — staging.eia_varud_raw sisaldab andmeid
+- `test_staging_gpr_has_data` — staging.gpr_raw sisaldab andmeid
+- `test_staging_yahoo_indikaatorid_has_data` — staging.yahoo_indikaatorid_raw sisaldab andmeid
+- `test_bulletin_prices_positive` — bulletin_raw hinnad on positiivsed
+- `test_brent_prices_positive` — brent_raw hinnad on positiivsed
+- `test_exchange_rate_reasonable` — EUR/USD vahemikus 0.5–2.0
+- `test_no_future_dates` — bulletin_raw ei sisalda tuleviku kuupäevi
+- `test_staging_gaps` — tuvastab puuduvad nädalad kõigis staging tabelites (informatiivselt, ei blokeeri)
 
-
-### Hoiatuse Testid
-Need logitakse, kuid ei blokeeri pipeline'i:
-- `test_dm_country_completeness` - Kõik riigid staging tabelist peavad olemas olema dm_country tabelis
-- `test_country_codes_valid_format` - Riikidel dm_country tabelis peavad olema kahekohalised koodid
-- `test_bulletin_prices_positive` - Kõik hinnad peavad olema positiivsed
-- `test_brent_prices_positive` - Kõik Brenti hinnad peavad olema positiivsed
-- `test_exchange_rate_reasonable` - Vahetuskursid peavad olema realistlikus vahemikus
-- `test_no_future_dates` - Ei tohi olla tuleviku kuupäevi
-- `test_recent_data_exists` - Andmed ei tohiks olla vanemad kui 10 päeva
+### Mart-kihi testid (`ALL_TESTS`)
+Käivituvad pärast transformatsioone (`run_data_quality_tests()` task):
+- `test_staging_bulletin_has_data` — andmete olemasolu
+- `test_dm_country_has_data` — dm_country tabel pole tühi
+- `test_dm_country_completeness` — kõik staging riigikoodid eksisteerivad dm_country tabelis
+- `test_dm_country_no_nulls` — dm_country kriitilised veerud pole null
+- `test_country_codes_valid_format` — riigikoodid on täpselt 2 tähemärki
+- `test_bulletin_prices_positive` — hinnad on positiivsed
+- `test_brent_prices_positive` — Brenti hinnad on positiivsed
+- `test_exchange_rate_reasonable` — vahetuskurss realistlikus vahemikus
+- `test_no_future_dates` — pole tuleviku kuupäevi
+- `test_recent_data_exists` — viimased andmed pole vanemad kui 10 päeva
+- `test_ft_price_forecast_has_data` — ft_price_forecast sisaldab nii ajaloolisi kui ennustuse ridu (EE)
+- `test_ft_price_forecast_no_null_forecast` — forecast_price pole null üheski reas
 
 
 ## Uue Testi Lisamine

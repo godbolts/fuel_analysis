@@ -438,14 +438,29 @@ def kutuse_hind_pipeline():
         print(f"eia_varud_raw: {inserted} uut rida ({len(rows) - inserted} olemas)")
         return inserted
 
+    @task
+    def run_staging_tests(**context) -> dict:
+        import sys
+        sys.path.insert(0, "/opt/airflow/tests")
+        from data_quality_tests import run_staging_tests as _run
+
+        results, passed, failed = _run()
+
+        if failed > 0:
+            raise Exception(f"Staging kvaliteeditestid ebaõnnestusid: {failed}/{len(results)}")
+
+        return {"passed": passed, "failed": failed, "total": len(results)}
+
     # ── Voog ──────────────────────────────────────────────────────────────
-    load_staging_bulletin(extract_bulletin())
-    load_staging_brent(extract_brent())
-    load_staging_eia_spothinnad(extract_eia_spothinnad())
-    load_staging_valuutakurss(extract_valuutakurss())
-    load_staging_yahoo_indikaatorid(extract_yahoo_indikaatorid())
-    load_staging_gpr(extract_gpr())
-    load_staging_eia_varud(extract_eia_varud())
+    b  = load_staging_bulletin(extract_bulletin())
+    br = load_staging_brent(extract_brent())
+    ei = load_staging_eia_spothinnad(extract_eia_spothinnad())
+    v  = load_staging_valuutakurss(extract_valuutakurss())
+    y  = load_staging_yahoo_indikaatorid(extract_yahoo_indikaatorid())
+    g  = load_staging_gpr(extract_gpr())
+    ev = load_staging_eia_varud(extract_eia_varud())
+
+    [b, br, ei, v, y, g, ev] >> run_staging_tests()
 
 
 kutuse_hind_pipeline()

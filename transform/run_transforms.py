@@ -29,6 +29,7 @@ def run_all():
         load_module("ft_brent", os.path.join(base, "ft_brent.py")),
         load_module("dm_date_aggregation", os.path.join(base, "dm_date_aggregation.py")),
         load_module("ft_market", os.path.join(base, "ft_market.py")),
+        load_module("ft_price_forecast", os.path.join(base, "ft_price_forecast.py")),
     ]
 
     for transformer in transformations:

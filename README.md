@@ -59,6 +59,7 @@ flowchart LR
         currency_calc[Valuuta teisendused]
         fuel_calc[Kütuse hinna teisendused]
         market_calc[Turuindikaatorite arvutus]
+        ml_forecast[ML hinnaennustus<br/>Ridge Regression]
 
     end
 
@@ -79,6 +80,7 @@ country_gen --> dm_country
             ft_brent[(ft_brent)]
             ft_market[(ft_market)]
             ft_fx[(ft_exchange_rate)]
+            ft_forecast[(ft_price_forecast)]
 
         end
 
@@ -138,6 +140,10 @@ country_gen --> dm_country
     gpr_raw --> market_calc
     market_calc --> ft_market
 
+    ft_baltic --> ml_forecast
+    ft_brent --> ml_forecast
+    ml_forecast --> ft_forecast
+
     %% Dimension joins
     dm_date -. join .-> ft_baltic
     dm_date -. join .-> ft_usa
@@ -154,12 +160,14 @@ country_gen --> dm_country
     ft_brent --> dashboard
     ft_market --> dashboard
     ft_fx --> dashboard
+    ft_forecast --> dashboard
 
     ft_baltic --> quality
     ft_usa --> quality
     ft_brent --> quality
     ft_market --> quality
     ft_fx --> quality
+    ft_forecast --> quality
 
     dashboard --> analytics
 ```
@@ -237,24 +245,26 @@ Vajalikud muutujad:
 1. **Sissevõtt** — Python (requests + pandas) tõmbab nädalasi andmeid 4 allikast: EU Kütusebulletään, EIA spothinnad ja naftavarud, GPR geopoliitiline riskiindeks, Yahoo Finance (Brent, EUR/USD, DXY, VIX, OVX). Airflow käivitab igal reedel kell 08:00 UTC.
 2. **Laadimine** — Andmed laaditakse staging kihti PostgreSQL-is (kokku 7 tabelit). Inkrementaalne, duplikaate ei lisata (ON CONFLICT DO NOTHING).
 3. **Transformatsioon** — Toorandmed normaliseeritakse ühtsele nädalasele ajavahemikule (date_trunc('week')::date), hinnad teisendatakse võrreldavatesse ühikutesse (USD/gallon → USD/l ÷ 3.78541, EUR/1000l → EUR/l ÷ 1000, USD → EUR ÷ EUR/USD kurss, USD/barrel → USD/l ÷ 158.987), GPR päevased väärtused agregeeritatakse nädala keskmiseks (AVG), naftavarude nädalane muutus arvutatakse aknafunktsiooniga (LAG), ning dimensioonitabelid (dm_country, dm_date_aggregation) rikastatakse välisandmetega (restcountries.com API, kalendriarvutused).
-4. **Testimine** — andmekvaliteedi testid kontrollivad andmete täielikkust, korrektsust ja värskust (staging andmete olemasolu, hindade positiivsus, vahetuskursside realistlikkus, riigikoodide formaadi korrektsus). Kriitilised testid blokeerivad pipeline'i ebaõnnestumise korral.
+4. **ML hinnaennustus** — Ridge Regression mudel (scikit-learn) ennustab EE tankladiisli hinda 8 nädalat ette. Features: Brent hind 3/4/5 nädalat enne, eelmine hind, 4-nädala libisev keskmine. Tulemused kirjutatakse `public.ft_price_forecast` tabelisse koos 95% usaldusintervalliga (±2×residual_std). Mudeli täpsus: R²≈0.91.
+5. **Testimine** — andmekvaliteedi testid kontrollivad andmete täielikkust, korrektsust ja värskust (staging andmete olemasolu, hindade positiivsus, vahetuskursside realistlikkus, riigikoodide formaadi korrektsus). Kriitilised testid blokeerivad pipeline'i ebaõnnestumise korral.
 5. **Näidikulaud** — [Kirjelda lühidalt, mida näidikulaud näitab]
 
 ## Andmekvaliteedi testid
 
 Projekt kontrollib järgmist automaatselt pärast iga transformatsiooni:
 
-**Kriitilised testid (blokeerivad pipeline'i):**
-1. **Andmete olemasolu** — Staging tabel sisaldab andmeid
-2. **Täielikkus** — Vajalikud riigikoodid staging tabelist eksisteerivad dm_country tabelis
+**Staging testid** (käivituvad kohe pärast laadimist):
+1. `staging_bulletin/brent/eia_spothinnad/eia_varud/gpr/yahoo_indikaatorid_has_data` — kõik staging tabelid sisaldavad andmeid
+2. `bulletin_prices_positive` / `brent_prices_positive` — hinnad on positiivsed
+3. `exchange_rate_reasonable` — EUR/USD vahemikus 0.5–2.0
+4. `no_future_dates` — staging tabelis ei ole tuleviku kuupäevi
+5. `staging_gaps` — tuvastab puuduvad nädalad igas staging tabelis (informatiivselt, ei blokeeri)
 
-**Hoiatuse testid:**
-3. **Hindade korrektsus** — Hinnad on positiivsed
-4. **Formaadi korrektsus** — Riigikoodid on täpselt 2 tähemärki pikad
-5. **Vahetuskursi piirid** — EUR/USD vahemikus 0.5-2.0
-6. **Andmete värskus** — Viimased andmed pole vanemad kui 10 päeva
-7. **Tuleviku kuupäevad** — Andmetes ei ole tuleviku kuupäevi
-8. **Null väärtused** — Kriitilistes veergudes ei ole null väärtuseid
+**Mart-kihi testid** (käivituvad pärast transformatsioone):
+6. `dm_country_has_data` / `dm_country_completeness` / `dm_country_no_nulls` / `country_codes_valid_format` — dimensiooni terviklikkus
+7. `recent_data_exists` — viimased andmed pole vanemad kui 10 päeva
+8. `ft_price_forecast_has_data` — ML tabelis on nii ajaloolisi kui ennustuse ridu
+9. `ft_price_forecast_no_null_forecast` — `forecast_price` ei ole null üheski reas
 
 Testide tulemused logitakse Airflow UI-s ja ebaõnnestumise korral DAG run märgitakse ebaõnnestunuks.
 
@@ -277,7 +287,9 @@ Testide tulemused logitakse Airflow UI-s ja ebaõnnestumise korral DAG run märg
 │   ├── arhitektuur.md
 │   └── progress.md
 ├── init/                                ← PostgreSQL init skriptid (staging skeemi loomine)
-├── superset/                            ← Superset konfiguratsioon ja seadistus
+├── superset/
+│   ├── setup_connection.py              ← auto-loob Supersetis DB ühenduse ja 8 datasetti
+│   └── dashboard_export.zip             ← impordivalmis Superset dashboard
 ├── tests/  
 │   ├── README.md                       ← testide dokumentatsioon
 │   └── data_quality_tests.py           ← test funktsioonid
@@ -290,7 +302,8 @@ Testide tulemused logitakse Airflow UI-s ja ebaõnnestumise korral DAG run märg
         ├── ft_usa_prices.py
         ├── ft_brent.py
         ├── ft_market.py
-        └── ft_exchange_rate.py
+        ├── ft_exchange_rate.py
+        └── ft_price_forecast.py      ← ML hinnaennustus (Ridge Regression)
 ```
 
 ## Kokkuvõte, puudused ja võimalikud edasiarendused
