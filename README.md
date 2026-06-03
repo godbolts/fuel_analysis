@@ -285,7 +285,7 @@ Andmebaas on jagatud kahte skeemi:
 
 ### Staging tabelid
 
-Täpsem kirjeldus: [`staging_tabelid.md`](Kihtide dukumentatsioon/staging_tabelid.md)
+Täpsem kirjeldus: [`staging_tabelid.md`](docs/staging_tabelid.md)
 
 Transformatsioonide filosoofia on, et nad tõmbaksid ainult puuduvaid nädalaid toortabelitest ja teeksid täieliku ülesehitamise ainult siis, kui andmed on kuidagi vigased. Meil tuli ette ka seda, et bulletiinis oli puudu üks nädal Baltikumi hindade kohta ja see inspireeris meid implementeerima lahendust, kus kui andmestikus esineb lünk — üks nädal puudub kahe eksisteeriva nädala vahel — arvutab transformatsioon keskmise ja lisab selle tabelisse. Et seda funktsionaalsust hoida läbipaistvana, sai igasse faktitabelisse lisatud veerg is_calculated, mis näitab, kas tegu on sünteetilise andmepunktiga, ja laseb analüüsis seda veergu ka filtrina kasutada.
 
@@ -301,7 +301,7 @@ Transformatsioonide filosoofia on, et nad tõmbaksid ainult puuduvaid nädalaid 
 
 ### Mart-kihis tabelid
 
-Täpsem kirjeldus: [`transform_tables.md`](Kihtide dukumentatsioon/transform_tables.md)
+Täpsem kirjeldus: [`transform_tables.md`](docs/transform_tables.md)
 
 #### `public.dm_date_aggregation`
 
@@ -448,15 +448,16 @@ Projekt kontrollib järgmist automaatselt pärast iga transformatsiooni:
 ├── compose.yml                          ← peamine Docker Compose konfiguratsioon
 ├── env.example                          ← keskkonnamuutujate näidis (.env põhi)
 ├── .gitignore
-├── staging_tabelid.md                   ← staging skeemi tabelite dokumentatsioon
-├── superseti_andmebaasiuhenduse_loomine.md ← juhend Superset DB ühenduse seadistamiseks
-├── transform_tables.md                  ← mart-kihis tabelite dokumentatsioon
 ├── dags/
 │   ├── kutuse_hind_pipeline.py          ← ingest DAG (reede 08:00 UTC)
 │   └── transform_pipeline.py           ← transform + test DAG (reede 09:00 UTC)
 ├── docs/
 │   ├── arhitektuur.md
-│   └── progress.md
+│   ├── progress.md
+│   ├── staging_tabelid.md                   ← staging skeemi tabelite dokumentatsioon
+│   ├── superset_dashboardi_vaatamine.md
+│   ├── superseti_andmebaasiuhenduse_loomine.md ← juhend Superset DB ühenduse seadistamiseks
+│   └── transform_tables.md                  ← mart-kihis tabelite dokumentatsioon
 ├── init/                                ← PostgreSQL init skriptid (staging skeemi loomine)
 ├── superset/
 │   ├── setup_connection.py             ← auto-loob Supersetis DB ühenduse ja datasettid
