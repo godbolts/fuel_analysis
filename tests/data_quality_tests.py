@@ -315,21 +315,16 @@ STAGING_TESTS = [
     test_brent_prices_positive,
     test_exchange_rate_reasonable,
     test_no_future_dates,
+    test_recent_data_exists,
     test_staging_gaps,
 ]
 
 # Test suite configuration
 ALL_TESTS = [
-    test_staging_bulletin_has_data,
     test_dm_country_has_data,
     test_dm_country_completeness,
     test_dm_country_no_nulls,
     test_country_codes_valid_format,
-    test_bulletin_prices_positive,
-    test_brent_prices_positive,
-    test_exchange_rate_reasonable,
-    test_no_future_dates,
-    test_recent_data_exists,
     test_ft_price_forecast_has_data,
     test_ft_price_forecast_no_null_forecast,
 ]
