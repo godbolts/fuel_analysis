@@ -188,6 +188,9 @@ services:
       SUPERSET_ADMIN_USER: ${SUPERSET_ADMIN_USER}
       SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD}
       SUPERSET_ADMIN_EMAIL: ${SUPERSET_ADMIN_EMAIL}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}      
     volumes:
       - ./superset/superset_config.py:/app/pythonpath/superset_config.py
       - ./superset/setup_connection.py:/app/setup_connection.py
