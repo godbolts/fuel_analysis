@@ -47,13 +47,13 @@ Transformeerib staging andmed **7 mart-tabelisse** (ajakava: reede 09:00 UTC):
  
 ### Põhimõtted
  
-- **ELT** — toorandmed hoitakse staging kihis muutmata kujul, teisendused toimuvad eraldi transform kihis
-- **Inkrementaalne laadimine** — mõlemad pipeline'id laevad ainult uued read alates viimasest kirjest
+- **ELT** — toorandmed hoitakse staging kihis muutmata kujul, teisendused toimuvad eraldi transform kihis.
+- **Inkrementaalne laadimine** — mõlemad pipeline'id laevad ainult uued read alates viimasest kirjest.
+- **Interpoleeritud andmed** — Anddmelüngad on täidetud keskmistega, et tagada loetavamad andmed, aga märge kalkulatsioonist on maha jäetud.
 
 ## Järgmised sammud
 
-1. Automaatne Andmete Visualiseerimine startupil.
-2. Dünaamilisem transformatsioon, mis eemaldab auke andmetes.
+1.Protsessi automatiseerimine, et compose teeks kohe käivitamisel ära kõik sammud, et visualisatsioonid kohe ette tuleks.
 
 ## Mis takistab
 
