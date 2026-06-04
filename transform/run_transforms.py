@@ -22,13 +22,13 @@ def run_all():
     base = "/opt/airflow/transform/tables"
     print(f"DEBUG: failid kaustas: {os.listdir(base)}") 
     transformations = [
+        load_module("dm_date_aggregation", os.path.join(base, "dm_date_aggregation.py")),
         load_module("ft_baltikum_prices", os.path.join(base, "ft_baltikum_prices.py")),
         load_module("ft_usa_prices", os.path.join(base, "ft_usa_prices.py")),
         load_module("ft_exchange_rate", os.path.join(base, "ft_exchange_rate.py")),
         load_module("ft_brent", os.path.join(base, "ft_brent.py")),        
         load_module("ft_market", os.path.join(base, "ft_market.py")),
         load_module("ft_price_forecast", os.path.join(base, "ft_price_forecast.py")),
-        load_module("dm_date_aggregation", os.path.join(base, "dm_date_aggregation.py")),
         load_module("dm_country", os.path.join(base, "dm_country.py")),
     ]
 
