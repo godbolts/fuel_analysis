@@ -36,12 +36,12 @@ CREATE TABLE IF NOT EXISTS public.ft_price_forecast (
 FEATURES = ["brent_lag3", "brent_lag4", "brent_lag5", "prev_price", "rolling_4wk"]
 
 
-def _load_data(hook) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Laeb EE hinnad ja Brenti DB-st."""
+def _load_data(hook, country_code: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Laeb ühe riigi hinnad ja Brenti DB-st."""
     conn = hook.get_conn()
     df_prices = pd.read_sql_query(
         "SELECT week_start_date, diesel_price FROM public.ft_baltikum_prices "
-        "WHERE country_code = 'EE' ORDER BY week_start_date",
+        f"WHERE country_code = '{country_code}' ORDER BY week_start_date",
         conn,
     )
     df_brent = pd.read_sql_query(
@@ -84,55 +84,10 @@ def run(hook) -> int:
     # 1. Tabel
     conn = hook.get_conn()
     cur = conn.cursor()
-    cur.execute(CREATE_TABLE_SQL)
+    cur.execute("SELECT to_regclass('public.ft_price_forecast')")
+    if cur.fetchone()[0] is None:
+        cur.execute(CREATE_TABLE_SQL)
     conn.commit()
-
-    # 2. Andmed + features
-    df_prices, df_brent = _load_data(hook)
-    df = _build_features(df_prices, df_brent)
-
-    # 3. Treeniandmed (read kus kõik featurid olemas)
-    df_train = df.dropna(subset=FEATURES + ["diesel_price"]).copy()
-    X = df_train[FEATURES].values
-    y = df_train["diesel_price"].values.astype(float)
-
-    # 4. Mudel
-    model = make_pipeline(StandardScaler(), Ridge(alpha=1.0))
-    model.fit(X, y)
-
-    y_fitted = model.predict(X)
-    residual_std = float(np.std(y - y_fitted))
-
-    df_train["forecast_price"] = np.round(y_fitted, 3)
-    df_train["is_forecast"] = False
-
-    # 5. Tulevik: 8 nädalat
-    last_date = df["week_start_date"].max()
-    rolling_window = list(df.tail(4)["diesel_price"].values.astype(float))
-    prev = float(df.loc[df["week_start_date"] == last_date, "diesel_price"].values[0])
-
-    future_rows: list[dict] = []
-    for i in range(1, 9):
-        future_date = last_date + pd.Timedelta(weeks=i)
-        feat = np.array([[
-            _get_brent_for_date(future_date - pd.Timedelta(weeks=3), df_brent),
-            _get_brent_for_date(future_date - pd.Timedelta(weeks=4), df_brent),
-            _get_brent_for_date(future_date - pd.Timedelta(weeks=5), df_brent),
-            prev,
-            float(np.mean(rolling_window[-4:])),
-        ]])
-        pred = float(np.round(model.predict(feat)[0], 3))
-        future_rows.append({
-            "week_start_date": future_date.date(),
-            "forecast_price": pred,
-            "is_forecast": True,
-        })
-        rolling_window.append(pred)
-        prev = pred
-
-    # 6. Kirjuta DB-sse
-    now = pd.Timestamp.utcnow()
-    cur.execute("DELETE FROM public.ft_price_forecast WHERE country_code = 'EE'")
 
     insert_sql = """
         INSERT INTO public.ft_price_forecast
@@ -141,30 +96,83 @@ def run(hook) -> int:
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
     """
 
-    inserted = 0
-    for _, row in df_train.iterrows():
-        fp = float(row["forecast_price"])
-        cur.execute(insert_sql, (
-            row["week_start_date"].date(), "EE",
-            float(row["diesel_price"]), fp,
-            round(fp - 2 * residual_std, 3),
-            round(fp + 2 * residual_std, 3),
-            False, now,
-        ))
-        inserted += 1
+    total_inserted = 0
+    now = pd.Timestamp.utcnow()
 
-    for row in future_rows:
-        fp = row["forecast_price"]
-        cur.execute(insert_sql, (
-            row["week_start_date"], "EE",
-            None, fp,
-            round(fp - 2 * residual_std, 3),
-            round(fp + 2 * residual_std, 3),
-            True, now,
-        ))
-        inserted += 1
+    for country_code in ["EE", "LV", "LT"]:
+        # 2. Andmed + features
+        df_prices, df_brent = _load_data(hook, country_code)
+        df = _build_features(df_prices, df_brent)
 
-    conn.commit()
+        # 3. Treeniandmed (read kus kõik featurid olemas)
+        df_train = df.dropna(subset=FEATURES + ["diesel_price"]).copy()
+        X = df_train[FEATURES].values
+        y = df_train["diesel_price"].values.astype(float)
+
+        # 4. Mudel
+        model = make_pipeline(StandardScaler(), Ridge(alpha=1.0))
+        model.fit(X, y)
+
+        y_fitted = model.predict(X)
+        residual_std = float(np.std(y - y_fitted))
+
+        df_train["forecast_price"] = np.round(y_fitted, 3)
+        df_train["is_forecast"] = False
+
+        # 5. Tulevik: 8 nädalat
+        last_date = df["week_start_date"].max()
+        rolling_window = list(df.tail(4)["diesel_price"].values.astype(float))
+        prev = float(df.loc[df["week_start_date"] == last_date, "diesel_price"].values[0])
+
+        future_rows: list[dict] = []
+        for i in range(1, 9):
+            future_date = last_date + pd.Timedelta(weeks=i)
+            feat = np.array([[
+                _get_brent_for_date(future_date - pd.Timedelta(weeks=3), df_brent),
+                _get_brent_for_date(future_date - pd.Timedelta(weeks=4), df_brent),
+                _get_brent_for_date(future_date - pd.Timedelta(weeks=5), df_brent),
+                prev,
+                float(np.mean(rolling_window[-4:])),
+            ]])
+            pred = float(np.round(model.predict(feat)[0], 3))
+            future_rows.append({
+                "week_start_date": future_date.date(),
+                "forecast_price": pred,
+                "is_forecast": True,
+            })
+            rolling_window.append(pred)
+            prev = pred
+
+        # 6. Kirjuta DB-sse
+        cur.execute(f"DELETE FROM public.ft_price_forecast WHERE country_code = '{country_code}'")
+
+        inserted = 0
+        for _, row in df_train.iterrows():
+            fp = float(row["forecast_price"])
+            cur.execute(insert_sql, (
+                row["week_start_date"].date(), country_code,
+                float(row["diesel_price"]), fp,
+                round(fp - 2 * residual_std, 3),
+                round(fp + 2 * residual_std, 3),
+                False, now,
+            ))
+            inserted += 1
+
+        for row in future_rows:
+            fp = row["forecast_price"]
+            cur.execute(insert_sql, (
+                row["week_start_date"], country_code,
+                None, fp,
+                round(fp - 2 * residual_std, 3),
+                round(fp + 2 * residual_std, 3),
+                True, now,
+            ))
+            inserted += 1
+
+        conn.commit()
+        r2 = float(np.corrcoef(y, y_fitted)[0, 1] ** 2)
+        print(f"  {country_code} Ridge R²: {r2:.4f} | residual_std: {residual_std:.4f} | {inserted} rida")
+        total_inserted += inserted
+
     cur.close()
-    print(f"  Ridge R²: {float(np.corrcoef(y, y_fitted)[0,1]**2):.4f} | residual_std: {residual_std:.4f}")
-    return inserted
+    return total_inserted
