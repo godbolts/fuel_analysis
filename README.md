@@ -239,7 +239,7 @@ Kõik saladused (paroolid, API võtmed, andmebaasi URL-id) on `.env` failis.
 1. **Sissevõtt** — Python (requests + pandas) tõmbab nädalasi andmeid 7 allikast: EU kütusebulletään, EIA spothinnad ja naftavarud, GPR geopoliitiline riskiindeks, Yahoo Finance (Brent, EUR/USD, DXY, VIX, OVX). Airflow käivitab igal reedel kell 08:00 UTC.
 2. **Laadimine** — Andmed laaditakse staging kihti PostgreSQL-is (kokku 7 tabelit). Inkrementaalne, duplikaate ei lisata (`ON CONFLICT DO NOTHING`).
 3. **Transformatsioon** — Toorandmed normaliseeritakse ühtsele nädalasele ajavahemikule (`date_trunc('week')::date`), hinnad teisendatakse võrreldavatesse ühikutesse (USD/gallon → USD/l ÷ 3.78541, EUR/1000l → EUR/l ÷ 1000, USD → EUR ÷ EUR/USD kurss, USD/barrel → USD/l ÷ 158.987), GPR päevased väärtused agregeeritatakse nädala keskmiseks (`AVG`), naftavarude nädalane muutus arvutatakse aknafunktsiooniga (`LAG`), ning dimensioonitabelid (`dm_country`, `dm_date_aggregation`) rikastatakse välisandmetega (restcountries.com API, kalendriarvutused). Puuduvad nädalad täidetakse lineaarse interpolatsiooniga ja märgitakse `is_calculated = TRUE`.
-4. **ML hinnaennustus** — Ridge Regression mudel (scikit-learn) ennustab EE tankladiisli hinda 8 nädalat ette. Features: Brent hind 3/4/5 nädalat enne, eelmine hind, 4-nädala libisev keskmine. Tulemused kirjutatakse `public.ft_price_forecast` tabelisse koos 95% usaldusintervalliga (±2×residual_std). Mudeli täpsus: R²≈0.91.
+4. **ML hinnaennustus** — Ridge Regression mudel (scikit-learn) ennustab EE, LV ja LT tankladiisli hinda 8 nädalat ette, kasutades 9 tunnust: Brenti toornafta hind 3–5 nädalat tagasi, eelmise nädala tanklahind, 4-nädala libisev keskmine ning turuindikaatorid (DXY, VIX, OVX, GPR). Tulemused kirjutatakse `public.ft_price_forecast` tabelisse koos 95% usaldusintervalliga (±2×residual_std). Mudeli täpsus: R²=0.92 (EE), 0.92 (LV), 0.97 (LT).
 5. **Testimine** — andmekvaliteedi testid kontrollivad andmete täielikkust, korrektsust ja värskust. Kriitilised testid blokeerivad pipeline'i ebaõnnestumise korral.
 6. **Näidikulaud** — Superset (`http://localhost:8088`) visualiseerib kütusehindade ajalugu, riikidevahelist võrdlust ja ML ennustust.
 
@@ -251,22 +251,24 @@ Superset on saadaval aadressil `http://localhost:8088`.
 
 Sisselogimiseks kasuta `.env` failis määratud `SUPERSET_ADMIN_USER` ja `SUPERSET_ADMIN_PASSWORD` väärtusi.
 
-### Andmebaasiühenduse loomine
+### Andmebaasiühendus ja datasettid
 
-1. Vali Supersetis **Settings → Database Connections → + Database**
-2. Vali andmebaasi tüübiks **PostgreSQL**
-3. Täida ühenduse andmed:
+Andmebaasiühendus luuakse automaatselt `docker compose up` käivitumisel, kuid **datasettide loomine eeldab, et tabelid on juba andmebaasis olemas**. Seetõttu tuleb pärast esimest andmete laadimist (Airflow DAG-id, vt jaotist „Käivitamine") käivitada `superset-init` uuesti:
 
-| Väli | Väärtus |
-|---|---|
-| Host | `analytics-db` |
-| Port | `5432` |
-| Database name | `.env` failist: `POSTGRES_DB` |
-| Username | `.env` failist: `POSTGRES_USER` |
-| Password | `.env` failist: `POSTGRES_PASSWORD` |
+```bash
+docker compose up -d --force-recreate superset-init
+```
 
-4. Klõpsa **Connect** — edukal ühendusel kuvatakse `Database connected`
-5. Vajuta **Finish**
+### Dashboardi import
+
+Dashboard tuleb importida käsitsi Superset UI kaudu:
+
+1. Logi sisse Supersetisse (`http://localhost:8088`)
+2. Vali ülemisest menüüst **Dashboards**
+3. Klõpsa paremal üleval **⋯ → Import dashboard**
+4. Vali fail `superset/dashboard_export_new.zip`
+5. Ilmuvas parooliaknas sisesta `POSTGRES_PASSWORD` väärtus `.env` failist väljale „Kütuse analüütikabaas"
+6. Klõpsa **Import**
 
 ### Dashboardi vaatamine
 
@@ -392,6 +394,21 @@ Iganädalased turuindikaatorid — dollari tugevus, volatiilsus ja geopoliitilin
 | `is_calculated` | BOOLEAN | TRUE = interpoleeritud, FALSE = päris andmed |
 | `add_timestamp` | TIMESTAMPTZ | Kirje lisamise aeg |
 
+#### `public.ft_price_forecast`
+
+ML Ridge Regression ennustus Baltikumi tankladiisli hinnale, 8 nädalat tulevikku.
+
+| Veerg | Tüüp | Kirjeldus |
+|---|---|---|
+| `week_start_date` | DATE | Nädala alguskuupäev (PK osa), join `dm_date_aggregation`-ga |
+| `country_code` | CHAR(2) | Riigikood EE/LV/LT (PK osa) |
+| `actual_price` | NUMERIC(6,4) | Tegelik tanklahind EUR/l (NULL tuleviku ridades) |
+| `forecast_price` | NUMERIC(6,4) | Mudeli ennustus EUR/l |
+| `ci_lower` | NUMERIC(6,4) | 95% usaldusintervalli alumine piir |
+| `ci_upper` | NUMERIC(6,4) | 95% usaldusintervalli ülemine piir |
+| `model_r2` | NUMERIC(6,4) | Mudeli R² treenimisandmetel |
+| `add_timestamp` | TIMESTAMPTZ | Kirje lisamise aeg |
+
 #### `public.ft_exchange_rate`
 
 Iganädalane EUR/USD valuutakurss mõlemas suunas.
@@ -489,10 +506,14 @@ Projekt kontrollib järgmist automaatselt pärast iga transformatsiooni:
 - Hästi töötavad ja kvaliteeti tagavad testid.
 
 **Puudused:**
-- Hetkel ei tule pähe, et midagi tegemata jäi, rohkem vaadata kuidas edasi arendada saaks.
+- Dashboard vastab äriküsimusele osaliselt — marginaali arvutatakse USA ULSD diisliga (EIA), mitte Euroopa ICE Gasoil ARA hinnaga, mis on geograafiliselt täpsem võrdluspunkt.
+- Superset andmesettide loomine eeldab, et tabelid on juba olemas enne `superset-init` käivitamist — tühjal andmebaasil ei loo datasette.
+- Dashboard tuleb käsitsi importida Superset UI kaudu (`superset/dashboard_export_new.zip`), import ei toimu automaatselt.
 
 **Mis edasi:**
-- Masinõppe erinevate andmepunktide ja börsi statistika pealt, millega saaks vähemalt mingigi reaalse ennustuse hindadele.
+- ICE Gasoil ARA hinna lisamine täpsema Euroopa marginaali arvutamiseks.
+- Otsene hinnaülekande kiiruse analüüs (pass-through rate) — kui suur osa Brenti hinnamuutusest jõuab tanklasse ja kui pika viivitusega.
+- Dashboardi automaatne import `superset-init` käivitamisel (praegu käsitsi).
 
 ---
 
