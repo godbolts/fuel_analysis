@@ -2,11 +2,15 @@
 public.ft_price_forecast
 -------------------------
 Allikas: public.ft_baltikum_prices + public.ft_brent
-Loogika: Ridge regression — EE tankladiisli hinnaennustus
+Loogika: Ridge regression — Baltikumi tankladiisli hinnaennustus
   Features:
     - brent_lag3/4/5 : Brenti hind 3/4/5 nädalat enne (lag=3 korrelatsiooni tipp 0.91)
-    - prev_price      : eelmise nädala EE diisel
+    - prev_price      : eelmise nädala tanklahind
     - rolling_4wk     : 4-nädala libisev keskmine
+    - dxy             : USA dollariindeks (ft_market)
+    - vix             : S&P 500 volatiilsusindeks (ft_market)
+    - ovx             : nafta volatiilsusindeks (ft_market)
+    - gpr_avg         : geopoliitilise riski nädala keskmine (ft_market)
   Iga jooksul kustutatakse EE read ja kirjutatakse uuesti:
     - ajaloolised read: actual_price + forecast_price (in-sample fit), is_forecast=FALSE
     - tuleviku 8 nädalat: ainult forecast_price, is_forecast=TRUE
@@ -33,11 +37,12 @@ CREATE TABLE IF NOT EXISTS public.ft_price_forecast (
 );
 """
 
-FEATURES = ["brent_lag3", "brent_lag4", "brent_lag5", "prev_price", "rolling_4wk"]
+FEATURES = ["brent_lag3", "brent_lag4", "brent_lag5", "prev_price", "rolling_4wk",
+            "dxy", "vix", "ovx", "gpr_avg"]
 
 
-def _load_data(hook, country_code: str) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Laeb ühe riigi hinnad ja Brenti DB-st."""
+def _load_data(hook, country_code: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Laeb ühe riigi hinnad, Brenti ja turuindikaatorid DB-st."""
     conn = hook.get_conn()
     df_prices = pd.read_sql_query(
         "SELECT week_start_date, diesel_price FROM public.ft_baltikum_prices "
@@ -49,26 +54,34 @@ def _load_data(hook, country_code: str) -> tuple[pd.DataFrame, pd.DataFrame]:
         "FROM public.ft_brent ORDER BY week_start_date",
         conn,
     )
+    df_market = pd.read_sql_query(
+        "SELECT week_start_date, dollar_index AS dxy, snp_index AS vix, "
+        "oil_index AS ovx, gpr_avg FROM public.ft_market ORDER BY week_start_date",
+        conn,
+    )
     conn.close()
     df_prices["week_start_date"] = pd.to_datetime(df_prices["week_start_date"])
     df_brent["brent_date"] = pd.to_datetime(df_brent["brent_date"])
-    return df_prices, df_brent
+    df_market["week_start_date"] = pd.to_datetime(df_market["week_start_date"])
+    return df_prices, df_brent, df_market
 
 
-def _build_features(df_prices: pd.DataFrame, df_brent: pd.DataFrame) -> pd.DataFrame:
-    """Lisab feature veerud: brent_lag3/4/5, prev_price, rolling_4wk."""
+def _build_features(df_prices: pd.DataFrame, df_brent: pd.DataFrame, df_market: pd.DataFrame) -> pd.DataFrame:
+    """Lisab feature veerud: brent_lag3/4/5, prev_price, rolling_4wk, dxy, vix, ovx, gpr_avg."""
     df = df_prices.copy().sort_values("week_start_date").reset_index(drop=True)
 
     for lag in [3, 4, 5]:
         shifted = df_brent.copy()
         shifted["week_start_date"] = shifted["brent_date"] + pd.Timedelta(weeks=lag)
-        shifted = shifted.rename(columns={"brent_price": f"brent_lag{lag}"})[
-            ["week_start_date", f"brent_lag{lag}"]
-        ]
+        shifted = shifted.rename(columns={"brent_price": f"brent_lag{lag}"})[[
+            "week_start_date", f"brent_lag{lag}"
+        ]]
         df = df.merge(shifted, on="week_start_date", how="left")
 
     df["prev_price"] = df["diesel_price"].shift(1)
     df["rolling_4wk"] = df["diesel_price"].shift(1).rolling(4).mean()
+    df = df.merge(df_market[["week_start_date", "dxy", "vix", "ovx", "gpr_avg"]],
+                  on="week_start_date", how="left")
     return df
 
 
@@ -101,8 +114,8 @@ def run(hook) -> int:
 
     for country_code in ["EE", "LV", "LT"]:
         # 2. Andmed + features
-        df_prices, df_brent = _load_data(hook, country_code)
-        df = _build_features(df_prices, df_brent)
+        df_prices, df_brent, df_market = _load_data(hook, country_code)
+        df = _build_features(df_prices, df_brent, df_market)
 
         # 3. Treeniandmed (read kus kõik featurid olemas)
         df_train = df.dropna(subset=FEATURES + ["diesel_price"]).copy()
@@ -124,6 +137,13 @@ def run(hook) -> int:
         rolling_window = list(df.tail(4)["diesel_price"].values.astype(float))
         prev = float(df.loc[df["week_start_date"] == last_date, "diesel_price"].values[0])
 
+        # Turuindikaatorite viimased teadaolevad väärtused tuleviku ennustuseks
+        last_market = df_market.sort_values("week_start_date").iloc[-1]
+        dxy_last = float(last_market["dxy"]) if pd.notna(last_market["dxy"]) else 0.0
+        vix_last = float(last_market["vix"]) if pd.notna(last_market["vix"]) else 0.0
+        ovx_last = float(last_market["ovx"]) if pd.notna(last_market["ovx"]) else 0.0
+        gpr_last = float(last_market["gpr_avg"]) if pd.notna(last_market["gpr_avg"]) else 0.0
+
         future_rows: list[dict] = []
         for i in range(1, 9):
             future_date = last_date + pd.Timedelta(weeks=i)
@@ -133,6 +153,7 @@ def run(hook) -> int:
                 _get_brent_for_date(future_date - pd.Timedelta(weeks=5), df_brent),
                 prev,
                 float(np.mean(rolling_window[-4:])),
+                dxy_last, vix_last, ovx_last, gpr_last,
             ]])
             pred = float(np.round(model.predict(feat)[0], 3))
             future_rows.append({
