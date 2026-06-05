@@ -501,18 +501,18 @@ Projekt kontrollib järgmist automaatselt pärast iga transformatsiooni:
 
 **Kokkuvõte:**
 - Andmete tõmbamine API-dest ja nende inkrementaalselt värskena hoidmine.
-- Transformatsioonide käivitamine, töötamine ja töösena hoidmine, mis tagab kiiruse, kvaliteedi ja läbinähtavuse.
+- Transformatsioonide käivitamine, töötamine ja töös hoidmine, mis tagab kiiruse, kvaliteedi ja läbinähtavuse.
 - Lihtsasti ja sirgjooneliselt nähtavad ja võrreldavad andmepunktid.
 - Hästi töötavad ja kvaliteeti tagavad testid.
 
 **Puudused:**
 - Dashboard vastab äriküsimusele osaliselt — marginaali arvutatakse USA ULSD diisliga (EIA), mitte Euroopa ICE Gasoil ARA hinnaga, mis on geograafiliselt täpsem võrdluspunkt.
-- Superset andmesettide loomine eeldab, et tabelid on juba olemas enne `superset-init` käivitamist — tühjal andmebaasil ei loo datasette.
+- Superset andmesettide loomine eeldab, et tabelid on juba olemas enne `superset-init` käivitamist, tühjal andmebaasil ei loo datasette.
 - Dashboard tuleb käsitsi importida Superset UI kaudu (`superset/dashboard_export_new.zip`), import ei toimu automaatselt.
 
 **Mis edasi:**
 - ICE Gasoil ARA hinna lisamine täpsema Euroopa marginaali arvutamiseks.
-- Otsene hinnaülekande kiiruse analüüs (pass-through rate) — kui suur osa Brenti hinnamuutusest jõuab tanklasse ja kui pika viivitusega.
+- Otsene hinnaülekande kiiruse analüüs (pass-through rate), kui suur osa Brenti hinnamuutusest jõuab tanklasse ja kui pika viivitusega.
 - Dashboardi automaatne import `superset-init` käivitamisel (praegu käsitsi).
 
 ---
