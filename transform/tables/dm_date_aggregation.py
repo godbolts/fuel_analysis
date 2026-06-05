@@ -14,7 +14,7 @@ Märkus:
 """
 
 CREATE_TABLE_SQL = """
-CREATE TABLE public.dm_date_aggregation (
+CREATE TABLE IF NOT EXISTS public.dm_date_aggregation (
     week_start_date   DATE         NOT NULL PRIMARY KEY,
     week_end_date     DATE         NOT NULL,
     year              SMALLINT     NOT NULL,
