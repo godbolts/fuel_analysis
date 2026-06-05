@@ -6,10 +6,10 @@ Kui kiiresti ja võrdselt kanduvad bensiini/diisli hinnamuutused üle Baltikumi 
 
 ## Mõõdikud
 
-1. **Bensiini jaehind** — Eesti, Läti, Leedu Euro95 hind EUR/l nädala lõikes, võrdluses USA hulgihinnaga
-2. **Diisli jaehind** — Eesti, Läti, Leedu diisli hind EUR/l nädala lõikes, võrdluses USA hulgihinnaga
-3. **Keskmine marginaal** — Baltikumi tankla jaehinna ja USA hulgihinna vahe EUR/l; näitab, kui kiiresti maailmaturu hinnamuutused tanklasse jõuavad
-4. **ML diislihinnaennustus** — Ridge Regression mudel ennustab EE/LV/LT diisli hinda 8 nädalat ette, kasutades 9 tunnust: Brenti hind 3–5 nädalat tagasi, eelmine tanklahind, 4-nädala libisev keskmine ning turuindikaatorid DXY, VIX, OVX ja GPR
+1. **Bensiini jaehind** - Eesti, Läti, Leedu Euro95 hind EUR/l nädala lõikes, võrdluses USA hulgihinnaga
+2. **Diisli jaehind** - Eesti, Läti, Leedu diisli hind EUR/l nädala lõikes, võrdluses USA hulgihinnaga
+3. **Keskmine marginaal** - Baltikumi tankla jaehinna ja USA hulgihinna vahe EUR/l; näitab, kui kiiresti maailmaturu hinnamuutused tanklasse jõuavad
+4. **ML diislihinnaennustus** - Ridge Regression mudel ennustab EE/LV/LT diisli hinda 8 nädalat ette, kasutades 9 tunnust: Brenti hind 3–5 nädalat tagasi, eelmine tanklahind, 4-nädala libisev keskmine ning turuindikaatorid DXY, VIX, OVX ja GPR
 
 ---
 
