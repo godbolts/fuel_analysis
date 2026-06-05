@@ -68,6 +68,10 @@ def _fetch_from_api(country_code_2: str) -> dict:
         "capital":        data.get("capital", [None])[0],
         "population":     data.get("population"),
     }
+
+def _country_exists(cur, country_code_2: str) -> bool:
+    cur.execute("SELECT 1 FROM public.dm_country WHERE country_code_2 = %s", (country_code_2,))
+    return cur.fetchone() is not None
  
  
 def run(hook):
@@ -76,6 +80,8 @@ def run(hook):
     with closing(hook.get_conn()) as conn:
         with conn:
             with conn.cursor() as cur:
+
+
  
                 cur.execute(CREATE_TABLE_SQL)
  
@@ -95,6 +101,10 @@ def run(hook):
                 inserted = 0
                 for code in country_codes:
                     try:
+                        if _country_exists(cur, code):
+                           print(f"  {code} → juba olemas, uuendatakse API andmetega") 
+                           continue
+                         
                         row = _fetch_from_api(code)
                         cur.execute(UPSERT_SQL, (
                             row["country_code_2"],
