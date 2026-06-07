@@ -216,7 +216,7 @@ Kui logi kirjed hakkavad konstantselt korduma, on programm **idle** olekus — s
 
 ## Saladused ja konfiguratsioon
 
-Kõik saladused (paroolid, API võtmed, andmebaasi URL-id) on `.env` failis.
+Kõik saladused (paroolid, API võtmed, andmebaasi URL-id) on `.env` failis. ZIP-faili import Supersetis õnnestub ainult siis, kui .env failis on sama kasutaja ja parool kui on ZIP-failis ehk siis: POSTGRES_USER=bensiin, POSTGRES_PASSWORD=bensiinikanister, POSTGRES_DB=bensiin.
 
 | Muutuja | Tähendus | Näide |
 |---------|----------|-------|
